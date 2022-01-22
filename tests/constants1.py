@@ -13,3 +13,10 @@ def test_ord_chr():
     a: i32
     a = ord('5')
     s = chr(43)
+
+def test_abs():
+    a: i32
+    a = abs(5)
+    a = abs(False)
+    b: f32
+    b = abs(5.5)
