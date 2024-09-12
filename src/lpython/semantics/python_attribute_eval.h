@@ -6,29 +6,53 @@
 #include <libasr/string_utils.h>
 #include <lpython/utils.h>
 #include <lpython/semantics/semantic_exception.h>
+#include <libasr/pass/intrinsic_function_registry.h>
 
-namespace LFortran {
+namespace LCompilers::LPython {
 
 struct AttributeHandler {
 
     typedef ASR::asr_t* (*attribute_eval_callback)(ASR::expr_t*, Allocator &,
                                 const Location &, Vec<ASR::expr_t*> &, diag::Diagnostics &);
 
-    std::map<std::string, attribute_eval_callback> attribute_map;
+    std::map<std::string, attribute_eval_callback> attribute_map, symbolic_attribute_map;
+    std::set<std::string> modify_attr_set;
 
     AttributeHandler() {
         attribute_map = {
             {"int@bit_length", &eval_int_bit_length},
+            {"array@size", &eval_array_size},
             {"list@append", &eval_list_append},
             {"list@remove", &eval_list_remove},
+            {"list@count", &eval_list_count},
+            {"list@index", &eval_list_index},
+            {"list@reverse", &eval_list_reverse},
+            {"list@pop", &eval_list_pop},
             {"list@clear", &eval_list_clear},
             {"list@insert", &eval_list_insert},
-            {"list@pop", &eval_list_pop},
             {"set@pop", &eval_set_pop},
             {"set@add", &eval_set_add},
             {"set@remove", &eval_set_remove},
+            {"set@discard", &eval_set_discard},
+            {"set@clear", &eval_set_clear},
             {"dict@get", &eval_dict_get},
-            {"dict@pop", &eval_dict_pop}
+            {"dict@pop", &eval_dict_pop},
+            {"dict@keys", &eval_dict_keys},
+            {"dict@values", &eval_dict_values},
+            {"dict@clear", &eval_dict_clear}
+        };
+
+        modify_attr_set = {"list@append", "list@remove",
+            "list@reverse", "list@clear", "list@insert", "list@pop",
+            "set@pop", "set@add", "set@remove", "set@discard", "dict@pop"};
+
+        symbolic_attribute_map = {
+            {"diff", &eval_symbolic_diff},
+            {"expand", &eval_symbolic_expand},
+            {"has", &eval_symbolic_has_symbol},
+            {"is_integer", &eval_symbolic_is_integer},
+            {"is_positive", &eval_symbolic_is_positive},
+            {"subs", &eval_symbolic_subs}
         };
     }
 
@@ -39,6 +63,8 @@ struct AttributeHandler {
             return "set";
         } else if (ASR::is_a<ASR::Dict_t>(*t)) {
             return "dict";
+        } else if (ASRUtils::is_array(t)) {
+            return "array";
         } else if (ASR::is_a<ASR::Integer_t>(*t)) {
             return "int";
         }
@@ -52,7 +78,16 @@ struct AttributeHandler {
         if (class_name == "") {
             throw SemanticError("Type name is not implemented yet.", loc);
         }
-        std::string key = get_type_name(type) + "@" + attr_name;
+        std::string key = class_name + "@" + attr_name;
+        if (modify_attr_set.find(key) != modify_attr_set.end()) {
+            if (ASR::is_a<ASR::Var_t>(*e)) {
+                ASR::Variable_t* v = ASRUtils::EXPR2VAR(e);
+                if (v->m_intent == ASRUtils::intent_in) {
+                    throw SemanticError("Modifying input function parameter `"
+                                + std::string(v->m_name) + "` is not allowed", loc);
+                }
+            }
+        }
         auto search = attribute_map.find(key);
         if (search != attribute_map.end()) {
             attribute_eval_callback cb = search->second;
@@ -63,19 +98,43 @@ struct AttributeHandler {
         }
     }
 
+    ASR::asr_t* get_symbolic_attribute(ASR::expr_t *e, std::string attr_name,
+            Allocator &al, const Location &loc, Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        std::string key = attr_name;
+        auto search = symbolic_attribute_map.find(key);
+        if (search != symbolic_attribute_map.end()) {
+            attribute_eval_callback cb = search->second;
+            return cb(e, al, loc, args, diag);
+        } else {
+            throw SemanticError("S." + attr_name + " is not implemented yet",
+                loc);
+        }
+    }
+
     static ASR::asr_t* eval_int_bit_length(ASR::expr_t *s, Allocator &al, const Location &loc,
             Vec<ASR::expr_t*> &args, diag::Diagnostics &/*diag*/) {
         if (args.size() != 0) {
             throw SemanticError("int.bit_length() takes no arguments", loc);
         }
         int int_kind = ASRUtils::extract_kind_from_ttype_t(ASRUtils::expr_type(s));
-        ASR::ttype_t *int_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc,
-                                        int_kind, nullptr, 0));
+        ASR::ttype_t *int_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc, int_kind));
         return ASR::make_IntegerBitLen_t(al, loc, s, int_type, nullptr);
+    }
+
+    static ASR::asr_t* eval_array_size(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &/*diag*/) {
+        if (args.size() != 0) {
+            throw SemanticError("array.size() takes no arguments", loc);
+        }
+        ASR::ttype_t *int_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc, 4));
+        return ASRUtils::make_ArraySize_t_util(al, loc, s, nullptr, int_type, nullptr, false);
     }
 
     static ASR::asr_t* eval_list_append(ASR::expr_t *s, Allocator &al, const Location &loc,
             Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        if (ASRUtils::is_const(s)) {
+            throw SemanticError("cannot append element to a const list", loc);
+        }
         if (args.size() != 1) {
             throw SemanticError("append() takes exactly one argument",
                 loc);
@@ -100,6 +159,9 @@ struct AttributeHandler {
 
     static ASR::asr_t* eval_list_remove(ASR::expr_t *s, Allocator &al, const Location &loc,
             Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        if (ASRUtils::is_const(s)) {
+            throw SemanticError("cannot remove element from a const list", loc);
+        }
         if (args.size() != 1) {
             throw SemanticError("remove() takes exactly one argument",
                 loc);
@@ -122,15 +184,87 @@ struct AttributeHandler {
         return make_ListRemove_t(al, loc, s, args[0]);
     }
 
+    static ASR::asr_t* eval_list_count(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        if (args.size() != 1) {
+            throw SemanticError("count() takes exactly one argument",
+                loc);
+        }
+        ASR::ttype_t *type = ASRUtils::expr_type(s);
+        ASR::ttype_t *list_type = ASR::down_cast<ASR::List_t>(type)->m_type;
+        ASR::ttype_t *ele_type = ASRUtils::expr_type(args[0]);
+        if (!ASRUtils::check_equal_type(ele_type, list_type)) {
+            std::string fnd = ASRUtils::type_to_str_python(ele_type);
+            std::string org = ASRUtils::type_to_str_python(list_type);
+            diag.add(diag::Diagnostic(
+                "Type mismatch in 'count', the types must be compatible",
+                diag::Level::Error, diag::Stage::Semantic, {
+                    diag::Label("type mismatch (found: '" + fnd + "', expected: '" + org + "')",
+                            {args[0]->base.loc})
+                })
+            );
+            throw SemanticAbort();
+        }
+        ASR::ttype_t *to_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc, 4));
+        return make_ListCount_t(al, loc, s, args[0], to_type, nullptr);
+    }
+
+    static ASR::asr_t* eval_list_index(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("list.index");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_list_reverse(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        if (ASRUtils::is_const(s)) {
+            throw SemanticError("cannot reverse a const list", loc);
+        }
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("list.reverse");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_list_pop(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        if (ASRUtils::is_const(s)) {
+            throw SemanticError("cannot pop element from a const list", loc);
+        }
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("list.pop");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
     static ASR::asr_t* eval_list_insert(ASR::expr_t *s, Allocator &al, const Location &loc,
             Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+            if (ASRUtils::is_const(s)) {
+                throw SemanticError("cannot insert element in a const list", loc);
+            }
             if (args.size() != 2) {
                 throw SemanticError("insert() takes exactly two arguments",
                         loc);
             }
             ASR::ttype_t *pos_type = ASRUtils::expr_type(args[0]);
-            ASR::ttype_t *int_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc,
-                                        4, nullptr, 0));
+            ASR::ttype_t *int_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc, 4));
             if (!ASRUtils::check_equal_type(pos_type, int_type)) {
                 throw SemanticError("List index should be of integer type",
                                     args[0]->base.loc);
@@ -154,42 +288,11 @@ struct AttributeHandler {
             return make_ListInsert_t(al, loc, s, args[0], args[1]);
     }
 
-    static ASR::asr_t* eval_list_pop(ASR::expr_t *s, Allocator &al, const Location &loc,
-            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
-            if (args.size() > 1) {
-                throw SemanticError("pop() takes atmost one argument",
-                        loc);
-            }
-            ASR::expr_t *idx = nullptr;
-            ASR::ttype_t *int_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc,
-                                        4, nullptr, 0));
-            ASR::ttype_t *type = ASRUtils::expr_type(s);
-            ASR::ttype_t *list_type = ASR::down_cast<ASR::List_t>(type)->m_type;
-            if (args.size() == 1) {
-                ASR::ttype_t *pos_type = ASRUtils::expr_type(args[0]);
-                if (!ASRUtils::check_equal_type(pos_type, int_type)) {
-                    std::string fnd = ASRUtils::type_to_str_python(pos_type);
-                    std::string org = ASRUtils::type_to_str_python(int_type);
-                    diag.add(diag::Diagnostic(
-                        "Type mismatch in 'pop', List index should be of integer type",
-                        diag::Level::Error, diag::Stage::Semantic, {
-                            diag::Label("type mismatch (found: '" + fnd + "', expected: '" + org + "')",
-                                    {args[0]->base.loc})
-                        })
-                    );
-                    throw SemanticAbort();
-                }
-                idx = args[0];
-            } else {
-                // default is last index
-                idx = (ASR::expr_t*)ASR::make_IntegerConstant_t(al, loc, -1, int_type);
-            }
-
-            return make_ListPop_t(al, loc, s, idx, list_type, nullptr);
-    }
-
     static ASR::asr_t* eval_list_clear(ASR::expr_t *s, Allocator &al,
         const Location &loc, Vec<ASR::expr_t*> &args, diag::Diagnostics & diag) {
+            if (ASRUtils::is_const(s)) {
+                throw SemanticError("cannot clear elements from a const list", loc);
+            }
             if (args.size() != 0) {
                 diag.add(diag::Diagnostic(
                     "Incorrect number of arguments in 'clear', it accepts no argument",
@@ -218,52 +321,61 @@ struct AttributeHandler {
 
     static ASR::asr_t* eval_set_add(ASR::expr_t *s, Allocator &al, const Location &loc,
             Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
-        if (args.size() != 1) {
-            throw SemanticError("add() takes exactly one argument", loc);
+        Vec<ASR::expr_t*> args_with_set;
+        args_with_set.reserve(al, args.size() + 1);
+        args_with_set.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_set.push_back(al, args[i]);
         }
-
-        ASR::ttype_t *type = ASRUtils::expr_type(s);
-        ASR::ttype_t *set_type = ASR::down_cast<ASR::Set_t>(type)->m_type;
-        ASR::ttype_t *ele_type = ASRUtils::expr_type(args[0]);
-        if (!ASRUtils::check_equal_type(ele_type, set_type)) {
-            std::string fnd = ASRUtils::type_to_str_python(ele_type);
-            std::string org = ASRUtils::type_to_str_python(set_type);
-            diag.add(diag::Diagnostic(
-                "Type mismatch in 'add', the types must be compatible",
-                diag::Level::Error, diag::Stage::Semantic, {
-                    diag::Label("type mismatch (found: '" + fnd + "', expected: '" + org + "')",
-                            {args[0]->base.loc})
-                })
-            );
-            throw SemanticAbort();
-        }
-
-        return make_SetInsert_t(al, loc, s, args[0]);
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("set.add");
+        return create_function(al, loc, args_with_set, diag);
     }
 
     static ASR::asr_t* eval_set_remove(ASR::expr_t *s, Allocator &al, const Location &loc,
             Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
-        if (args.size() != 1) {
-            throw SemanticError("remove() takes exactly one argument", loc);
+        Vec<ASR::expr_t*> args_with_set;
+        args_with_set.reserve(al, args.size() + 1);
+        args_with_set.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_set.push_back(al, args[i]);
         }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("set.remove");
+        return create_function(al, loc, args_with_set, diag);
+    }
 
-        ASR::ttype_t *type = ASRUtils::expr_type(s);
-        ASR::ttype_t *set_type = ASR::down_cast<ASR::Set_t>(type)->m_type;
-        ASR::ttype_t *ele_type = ASRUtils::expr_type(args[0]);
-        if (!ASRUtils::check_equal_type(ele_type, set_type)) {
-            std::string fnd = ASRUtils::type_to_str_python(ele_type);
-            std::string org = ASRUtils::type_to_str_python(set_type);
-            diag.add(diag::Diagnostic(
-                "Type mismatch in 'remove', the types must be compatible",
-                diag::Level::Error, diag::Stage::Semantic, {
-                    diag::Label("type mismatch (found: '" + fnd + "', expected: '" + org + "')",
-                            {args[0]->base.loc})
-                })
-            );
-            throw SemanticAbort();
+    static ASR::asr_t* eval_set_discard(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_set;
+        args_with_set.reserve(al, args.size() + 1);
+        args_with_set.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_set.push_back(al, args[i]);
         }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("set.discard");
+        return create_function(al, loc, args_with_set, diag);
+    }
 
-        return make_SetRemove_t(al, loc, s, args[0]);
+    static ASR::asr_t* eval_set_clear(ASR::expr_t *s, Allocator &al,
+        const Location &loc, Vec<ASR::expr_t*> &args, diag::Diagnostics & diag) {
+            if (ASRUtils::is_const(s)) {
+                throw SemanticError("cannot clear elements from a const set", loc);
+            }
+            if (args.size() != 0) {
+                diag.add(diag::Diagnostic(
+                    "Incorrect number of arguments in 'clear', it accepts no argument",
+                    diag::Level::Error, diag::Stage::Semantic, {
+                        diag::Label("incorrect number of arguments in clear (found: " +
+                                    std::to_string(args.size()) + ", expected: 0)",
+                                {loc})
+                    })
+                );
+                throw SemanticAbort();
+            }
+
+            return make_SetClear_t(al, loc, s);
     }
 
     static ASR::asr_t* eval_dict_get(ASR::expr_t *s, Allocator &al, const Location &loc,
@@ -308,6 +420,9 @@ struct AttributeHandler {
 
     static ASR::asr_t* eval_dict_pop(ASR::expr_t *s, Allocator &al, const Location &loc,
             Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        if (ASRUtils::is_const(s)) {
+            throw SemanticError("cannot pop elements from a const dict", loc);
+        }
         if (args.size() != 1) {
             throw SemanticError("'pop' takes only one argument for now", loc);
         }
@@ -329,8 +444,210 @@ struct AttributeHandler {
         return make_DictPop_t(al, loc, s, args[0], value_type, nullptr);
     }
 
+    static ASR::asr_t* eval_dict_keys(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_dict;
+        args_with_dict.reserve(al, args.size() + 1);
+        args_with_dict.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_dict.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("dict.keys");
+        return create_function(al, loc, args_with_dict, diag);
+    }
+
+    static ASR::asr_t* eval_dict_values(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_dict;
+        args_with_dict.reserve(al, args.size() + 1);
+        args_with_dict.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_dict.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("dict.values");
+        return create_function(al, loc, args_with_dict, diag);
+    }
+
+    static ASR::asr_t* eval_dict_clear(ASR::expr_t *s, Allocator &al,
+        const Location &loc, Vec<ASR::expr_t*> &args, diag::Diagnostics & diag) {
+            if (ASRUtils::is_const(s)) {
+                throw SemanticError("cannot clear elements from a const dict", loc);
+            }
+            if (args.size() != 0) {
+                diag.add(diag::Diagnostic(
+                    "Incorrect number of arguments in 'clear', it accepts no argument",
+                    diag::Level::Error, diag::Stage::Semantic, {
+                        diag::Label("incorrect number of arguments in clear (found: " +
+                                    std::to_string(args.size()) + ", expected: 0)",
+                                {loc})
+                    })
+                );
+                throw SemanticAbort();
+            }
+
+            return make_DictClear_t(al, loc, s);
+    }
+
+    static ASR::asr_t* eval_symbolic_diff(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("diff");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_symbolic_expand(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("expand");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_symbolic_has_symbol(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("has");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_symbolic_is_Add(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("AddQ");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_symbolic_is_Mul(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("MulQ");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_symbolic_is_Pow(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("PowQ");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_symbolic_is_log(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("LogQ");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_symbolic_is_sin(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("SinQ");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_symbolic_get_argument(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("GetArgument");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_symbolic_is_integer(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("is_integer");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_symbolic_is_positive(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("is_positive");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
+    static ASR::asr_t* eval_symbolic_subs(ASR::expr_t *s, Allocator &al, const Location &loc,
+            Vec<ASR::expr_t*> &args, diag::Diagnostics &diag) {
+        Vec<ASR::expr_t*> args_with_list;
+        args_with_list.reserve(al, args.size() + 1);
+        args_with_list.push_back(al, s);
+        for(size_t i = 0; i < args.size(); i++) {
+            args_with_list.push_back(al, args[i]);
+        }
+        ASRUtils::create_intrinsic_function create_function =
+            ASRUtils::IntrinsicElementalFunctionRegistry::get_create_function("subs");
+        return create_function(al, loc, args_with_list, diag);
+    }
+
 }; // AttributeHandler
 
-} // namespace LFortran
+} // namespace LCompilers::LPython
 
 #endif /* LPYTHON_ATTRIBUTE_EVAL_H */

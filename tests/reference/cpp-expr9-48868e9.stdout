@@ -17,37 +17,16 @@ Kokkos::View<T*> from_std_vector(const std::vector<T> &v)
     return r;
 }
 
-
-struct dimension_descriptor
-{
-    int32_t lower_bound, length;
-};
 // Forward declarations
-void _lpython_main_program();
+void __main__global_stmts();
 void main0();
 int32_t test_return_1(int32_t a);
 std::string test_return_2(int32_t a);
 int32_t test_return_3(int32_t a);
-void test_return_4(int32_t a);
 namespace {
 }
 
 // Implementations
-void _lpython_main_program()
-{
-    main0();
-}
-
-void main0()
-{
-    int32_t i;
-    std::string s;
-    i = test_return_1(4);
-    s = test_return_2(4);
-    i = test_return_3(4);
-    test_return_4(4);
-}
-
 int32_t test_return_1(int32_t a)
 {
     int32_t _lpython_return_variable;
@@ -69,21 +48,28 @@ std::string test_return_2(int32_t a)
 int32_t test_return_3(int32_t a)
 {
     int32_t _lpython_return_variable;
-    a = 3;
     _lpython_return_variable = a;
     return _lpython_return_variable;
 }
 
-void test_return_4(int32_t a)
+void main0()
 {
-    a = 1;
-    return;
+    int32_t i;
+    std::string s;
+    i = test_return_1(4);
+    s = test_return_2(4);
+    i = test_return_3(4);
+}
+
+void __main__global_stmts()
+{
+    main0();
 }
 
 namespace {
 
 void main2() {
-    _lpython_main_program();
+    __main__global_stmts();
 }
 
 }

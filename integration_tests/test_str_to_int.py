@@ -1,4 +1,4 @@
-from ltypes import i32
+from lpython import i32
 
 def f():
     i: i32
@@ -19,5 +19,13 @@ def f():
     s = "    -1234   "
     i = i32(int(s))
     assert i == -1234
+
+    assert i32(int("01010",10)) == 1010
+    assert i32(int("01010",2)) == 10
+    assert i32(int("Beef",16)) == 48879
+    assert i32(int("0xE",16)) == 14
+    assert i32(int("0xE",0)) == 14
+    assert i32(int("123",0)) == 123
+    assert i32(int("0bE",16)) == 190
 
 f()

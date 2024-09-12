@@ -1,9 +1,17 @@
-from ltypes import i8, i16, i32, i64
+from lpython import i8, i16, i32, i64
 
 def test_new_line():
     print("abc\n")
     print("\ndef")
     print("x\nyz")
+
+def test_escape_sequences():
+    print('I said \'Wow\' ')
+    print("I said \"hi\" ")
+    print("I said \\\"hi\" ")
+    print('I said \'\\\'hi\\''hey\' ')
+    print('a''b')
+    print("a" "b")
 
 def test_int():
     i: i8 = i8(1)
@@ -23,5 +31,6 @@ def test_issue_1124():
 
 
 test_new_line()
+test_escape_sequences()
 test_int()
 test_issue_1124()

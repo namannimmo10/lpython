@@ -1,0 +1,13 @@
+{
+    "basename": "cpp-test_list_repeat2-698d7f4",
+    "cmd": "lpython --no-color --show-cpp {infile}",
+    "infile": "tests/../integration_tests/test_list_repeat2.py",
+    "infile_hash": "3f1fa9fd655b76efa451a83734ddc61af0a917090588ef53afe30b04",
+    "outfile": null,
+    "outfile_hash": null,
+    "stdout": "cpp-test_list_repeat2-698d7f4.stdout",
+    "stdout_hash": "6e6428a71e48dbad6de969a48a9b958be8fb6d5ec2ed8490ee3f72ff",
+    "stderr": null,
+    "stderr_hash": null,
+    "returncode": 0
+}

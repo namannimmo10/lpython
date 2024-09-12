@@ -4,17 +4,15 @@
 #include <lpython/python_ast.h>
 #include <libasr/asr.h>
 
-namespace LFortran::LPython {
+namespace LCompilers::LPython {
 
-    std::string pickle_python(AST::ast_t &ast, bool colors=false, bool indent=false);
-    std::string pickle_tree_python(AST::ast_t &ast, bool colors=true);
-    Result<ASR::TranslationUnit_t*> python_ast_to_asr(Allocator &al, LocationManager &lm,
+    Result<ASR::TranslationUnit_t*> python_ast_to_asr(Allocator &al, LocationManager &lm, SymbolTable* symtab,
         LPython::AST::ast_t &ast, diag::Diagnostics &diagnostics, CompilerOptions &compiler_options,
-            bool main_module, std::string file_path, bool allow_implicit_casting=false);
+            bool main_module, std::string module_name, std::string file_path, bool allow_implicit_casting=false, size_t eval_count=0);
 
-    int save_pyc_files(const LFortran::ASR::TranslationUnit_t &u,
+    int save_pyc_files(const ASR::TranslationUnit_t &u,
                        std::string infile);
 
-} // namespace LFortran
+} // namespace LCompilers::LPython
 
 #endif // LFORTRAN_PYTHON_AST_TO_ASR_H

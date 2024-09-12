@@ -9,8 +9,8 @@ sys.path.append(os.path.join(ROOT_DIR, "src", "libasr"))
 from compiler_tester.tester import color, fg, log, run_test, style, tester_main
 
 
-def single_test(test, verbose, no_llvm, update_reference,
-                specific_backends=None, excluded_backends=None):
+def single_test(test, verbose, no_llvm, skip_run_with_dbg, skip_cpptranslate, update_reference,
+                verify_hash, no_color, specific_backends=None, excluded_backends=None):
     filename = test["filename"]
     def is_included(backend):
          return test.get(backend, False) \
@@ -21,21 +21,31 @@ def single_test(test, verbose, no_llvm, update_reference,
     ast = is_included("ast")
     ast_new = is_included("ast_new")
     asr = is_included("asr")
+    asr_json = is_included("asr_json")
     llvm = is_included("llvm")
     llvm_dbg = is_included("llvm_dbg")
     cpp = is_included("cpp")
     c = is_included("c")
+    python = is_included("python")
+    is_cumulative = is_included("cumulative")
     wat = is_included("wat")
     run = is_included("run")
+    run_with_dbg = is_included("run_with_dbg")
+    disable_main = is_included("disable_main")
+    fast = is_included("fast")
     pass_ = test.get("pass", None)
     optimization_passes = ["flip_sign", "div_to_mul", "fma", "sign_from_value",
                            "inline_function_calls", "loop_unroll",
-                           "dead_code_removal", "loop_vectorise", "print_list"]
+                           "dead_code_removal", "loop_vectorise", "print_list_tuple",
+                           "class_constructor"]
 
-    if pass_ and (pass_ not in ["do_loops", "global_stmts"] and
+    if pass_ and (pass_ not in ["do_loops", "global_stmts", "while_else"] and
                   pass_ not in optimization_passes):
         raise Exception(f"Unknown pass: {pass_}")
-    log.debug(f"{color(style.bold)} START TEST: {color(style.reset)} {filename}")
+    if no_color:
+        log.debug(f" START TEST: {filename}")
+    else:
+        log.debug(f"{color(style.bold)} START TEST: {color(style.reset)} {filename}")
 
     extra_args = f"--no-error-banner {show_verbose}"
 
@@ -46,7 +56,7 @@ def single_test(test, verbose, no_llvm, update_reference,
             "lpython --no-color --show-tokens {infile} -o {outfile}",
             filename,
             update_reference,
-            extra_args)
+            extra_args=extra_args)
 
     if ast:
         run_test(
@@ -55,7 +65,7 @@ def single_test(test, verbose, no_llvm, update_reference,
             "lpython --show-ast --no-color {infile} -o {outfile}",
             filename,
             update_reference,
-            extra_args)
+            extra_args=extra_args)
 
     if ast_new:
         run_test(
@@ -64,7 +74,7 @@ def single_test(test, verbose, no_llvm, update_reference,
             "lpython --show-ast --new-parser --no-color {infile} -o {outfile}",
             filename,
             update_reference,
-            extra_args)
+            extra_args=extra_args)
 
     if asr:
         run_test(
@@ -73,13 +83,27 @@ def single_test(test, verbose, no_llvm, update_reference,
             "lpython --show-asr --no-color {infile} -o {outfile}",
             filename,
             update_reference,
-            extra_args)
+            extra_args=extra_args)
+
+    if asr_json:
+        run_test(
+            filename,
+            "asr_json",
+            "lpython --show-asr --json --no-color {infile} -o {outfile}",
+            filename,
+            update_reference,
+            extra_args=extra_args)
 
     if pass_ is not None:
-        cmd = "lpython --pass=" + pass_ + \
+        cmd = "lpython "
+        if is_cumulative:
+            cmd += "--cumulative "
+        if fast:
+            cmd += "--fast "
+        cmd += "--pass=" + pass_ + \
             " --show-asr --no-color {infile} -o {outfile}"
         run_test(filename, "pass_{}".format(pass_), cmd,
-                 filename, update_reference, extra_args)
+                 filename, update_reference, extra_args=extra_args)
 
     if no_llvm:
         log.info(f"{filename} * llvm   SKIPPED as requested")
@@ -91,7 +115,7 @@ def single_test(test, verbose, no_llvm, update_reference,
                 "lpython --no-color --show-llvm {infile} -o {outfile}",
                 filename,
                 update_reference,
-                extra_args)
+                extra_args=extra_args)
         if llvm_dbg:
             run_test(
                 filename,
@@ -100,22 +124,40 @@ def single_test(test, verbose, no_llvm, update_reference,
                     "{infile} -o {outfile}",
                 filename,
                 update_reference,
-                extra_args)
+                extra_args=extra_args)
 
     if cpp:
         run_test(filename, "cpp", "lpython --no-color --show-cpp {infile}",
-                 filename, update_reference, extra_args)
+                 filename, update_reference, extra_args=extra_args)
 
     if c:
-        run_test(filename, "c", "lpython --no-color --show-c {infile}",
-                 filename, update_reference, extra_args)
+        if disable_main:
+            run_test(filename, "c", "lpython --no-color --disable-main --show-c {infile}",
+                 filename, update_reference, extra_args=extra_args)
+        else:
+            run_test(filename, "c", "lpython --no-color --show-c {infile}",
+                 filename, update_reference, extra_args=extra_args)
+
+    if python:
+       run_test(filename, "python", "lpython --no-color --show-python {infile}",
+            filename, update_reference, extra_args=extra_args)
+
     if wat:
         run_test(filename, "wat", "lpython --no-color --show-wat {infile}",
-                 filename, update_reference, extra_args)
+                 filename, update_reference, extra_args=extra_args)
 
     if run:
         run_test(filename, "runtime", "lpython {infile}",
-                 filename, update_reference, extra_args)
+                 filename, update_reference, extra_args=extra_args)
+
+    if run_with_dbg:
+        if skip_run_with_dbg:
+            log.info(f"{filename} * run_with_dbg   SKIPPED as requested")
+        else:
+            run_test(
+                filename, "run_dbg",
+                "lpython {infile} -g --debug-with-line-column --no-color",
+                filename, update_reference, extra_args=extra_args)
 
 if __name__ == "__main__":
     tester_main("LPython", single_test)

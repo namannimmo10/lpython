@@ -7,8 +7,7 @@
 #include <libasr/containers.h>
 #include <libasr/bigint.h>
 
-namespace LFortran
-{
+namespace LCompilers::LPython {
 
 struct Key_Val {
     LPython::AST::expr_t* key;
@@ -111,17 +110,20 @@ union YYSTYPE {
 static_assert(std::is_standard_layout<YYSTYPE>::value);
 static_assert(std::is_trivial<YYSTYPE>::value);
 // Ensure the YYSTYPE size is equal to Vec<AST::ast_t*>, which is a required member, so
-// YYSTYPE has to be at least as big, but it should not be bigger, otherwise it
+// YYSTYPE must be at least as big, but it should not be bigger, otherwise it
 // would reduce performance.
-static_assert(sizeof(YYSTYPE) == sizeof(Vec<LPython::AST::ast_t*>));
+// A temporary fix for PowerPC 32-bit, where the following assert fails with (16 == 12).
+#if !defined(HAVE_BUILD_TO_WASM) && !defined(__ppc__)
+static_assert(sizeof(YYSTYPE) == sizeof(Vec<AST::ast_t*>));
+#endif
 
 static_assert(std::is_standard_layout<Location>::value);
 static_assert(std::is_trivial<Location>::value);
 
-} // namespace LFortran
+} // namespace LCompilers::LPython
 
 
-typedef struct LFortran::Location YYLTYPE;
+typedef struct LCompilers::Location YYLTYPE;
 #define YYLTYPE_IS_DECLARED 1
 #define YYLTYPE_IS_TRIVIAL 0
 #define YYINITDEPTH 2000

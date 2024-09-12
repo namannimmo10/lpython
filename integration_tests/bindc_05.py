@@ -1,14 +1,14 @@
-from ltypes import CPtr, empty_c_void_p, i32, f32, dataclass, Pointer, ccall, p_c_pointer, pointer
+from lpython import CPtr, empty_c_void_p, i32, f32, dataclass, Pointer, ccall, p_c_pointer, pointer
 
 @dataclass
 class Void:
     data: CPtr
 
-@ccall
+@ccall(header="bindc_05b.h")
 def trunc_custom(value: Pointer[CPtr]) -> CPtr:
     pass
 
-@ccall
+@ccall(header="bindc_05b.h")
 def print_value(value: CPtr):
     pass
 

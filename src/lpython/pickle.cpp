@@ -1,117 +1,65 @@
 #include <string>
 
 #include <lpython/pickle.h>
-#include <lpython/pickle.h>
 #include <lpython/bigint.h>
+#include <lpython/python_ast.h>
 #include <libasr/asr_utils.h>
 #include <libasr/string_utils.h>
+#include <libasr/location.h>
+#include <libasr/pass/intrinsic_function_registry.h>
+#include <libasr/pass/intrinsic_array_function_registry.h>
 
-namespace LFortran {
+namespace LCompilers::LPython {
 
-/* -----------------------------------------------------------------------*/
-// ASR
-
-class ASRPickleVisitor :
-    public LFortran::ASR::PickleBaseVisitor<ASRPickleVisitor>
+/********************** AST Pickle *******************/
+class PickleVisitor : public AST::PickleBaseVisitor<PickleVisitor>
 {
 public:
-    bool show_intrinsic_modules;
-
     std::string get_str() {
         return s;
     }
-    void visit_symbol(const ASR::symbol_t &x) {
-        s.append(LFortran::ASRUtils::symbol_parent_symtab(&x)->get_counter());
-        s.append(" ");
-        if (use_colors) {
-            s.append(color(fg::yellow));
-        }
-        s.append(LFortran::ASRUtils::symbol_name(&x));
-        if (use_colors) {
-            s.append(color(fg::reset));
-        }
-    }
-    void visit_IntegerConstant(const ASR::IntegerConstant_t &x) {
-        s.append("(");
-        if (use_colors) {
-            s.append(color(style::bold));
-            s.append(color(fg::magenta));
-        }
-        s.append("IntegerConstant");
-        if (use_colors) {
-            s.append(color(fg::reset));
-            s.append(color(style::reset));
-        }
-        s.append(" ");
-        if (use_colors) {
-            s.append(color(fg::cyan));
-        }
-        s.append(std::to_string(x.m_n));
-        if (use_colors) {
-            s.append(color(fg::reset));
-        }
-        s.append(" ");
-        this->visit_ttype(*x.m_type);
-        s.append(")");
-    }
-    void visit_Module(const ASR::Module_t &x) {
-        if (!show_intrinsic_modules &&
-                    (x.m_intrinsic || startswith(x.m_name, "lfortran_intrinsic_"))) {
-            s.append("(");
-            if (use_colors) {
-                s.append(color(style::bold));
-                s.append(color(fg::magenta));
-            }
-            s.append("IntrinsicModule");
-            if (use_colors) {
-                s.append(color(fg::reset));
-                s.append(color(style::reset));
-            }
-            s.append(" ");
-            s.append(x.m_name);
-            s.append(")");
-        } else {
-            LFortran::ASR::PickleBaseVisitor<ASRPickleVisitor>::visit_Module(x);
-        };
-    }
 };
 
-std::string pickle(LFortran::ASR::asr_t &asr, bool colors, bool indent,
-        bool show_intrinsic_modules) {
-    ASRPickleVisitor v;
+std::string pickle_python(AST::ast_t &ast, bool colors, bool indent) {
+    PickleVisitor v;
     v.use_colors = colors;
     v.indent = indent;
-    v.show_intrinsic_modules = show_intrinsic_modules;
-    v.visit_asr(asr);
+    v.visit_ast(ast);
     return v.get_str();
 }
 
-std::string pickle(LFortran::ASR::TranslationUnit_t &asr, bool colors, bool indent, bool show_intrinsic_modules) {
-    return pickle((ASR::asr_t &)asr, colors, indent, show_intrinsic_modules);
-}
-
-class ASRTreeVisitor :
-    public LFortran::ASR::TreeBaseVisitor<ASRTreeVisitor>
+/********************** AST Pickle Tree *******************/
+class ASTTreeVisitor : public AST::TreeBaseVisitor<ASTTreeVisitor>
 {
 public:
-    bool show_intrinsic_modules;
-    
     std::string get_str() {
         return s;
     }
-
 };
 
-std::string pickle_tree(LFortran::ASR::asr_t &asr, bool colors, bool show_intrinsic_modules) {
-    ASRTreeVisitor v;
+std::string pickle_tree_python(AST::ast_t &ast, bool colors) {
+    ASTTreeVisitor v;
     v.use_colors = colors;
-    v.show_intrinsic_modules = show_intrinsic_modules;
-    v.visit_asr(asr);
+    v.visit_ast(ast);
     return v.get_str();
 }
 
-std::string pickle_tree(LFortran::ASR::TranslationUnit_t &asr, bool colors, bool show_intrinsic_modules) {
-    return pickle_tree((ASR::asr_t &)asr, colors, show_intrinsic_modules);
+/********************** AST Pickle Json *******************/
+class ASTJsonVisitor :
+    public LPython::AST::JsonBaseVisitor<ASTJsonVisitor>
+{
+public:
+    using LPython::AST::JsonBaseVisitor<ASTJsonVisitor>::JsonBaseVisitor;
+
+    std::string get_str() {
+        return s;
+    }
+};
+
+std::string pickle_json(LPython::AST::ast_t &ast, LocationManager &lm) {
+    ASTJsonVisitor v(lm);
+    v.visit_ast(ast);
+    return v.get_str();
 }
 
 }

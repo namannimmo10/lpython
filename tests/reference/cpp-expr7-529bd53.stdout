@@ -17,33 +17,21 @@ Kokkos::View<T*> from_std_vector(const std::vector<T> &v)
     return r;
 }
 
-
-struct dimension_descriptor
-{
-    int32_t lower_bound, length;
-};
 // Forward declarations
-void _lpython_main_program();
+void __main__global_stmts();
 void main0();
 void test_pow();
 int32_t test_pow_1(int32_t a, int32_t b);
 double __lpython_overloaded_0__pow(int32_t x, int32_t y);
-float _lfortran_caimag(std::complex<float> x);
-double _lfortran_zaimag(std::complex<double> x);
 namespace {
 }
 
 // Implementations
-void _lpython_main_program()
+double __lpython_overloaded_0__pow(int32_t x, int32_t y)
 {
-    main0();
-}
-
-void main0()
-{
-    int32_t c;
-    test_pow();
-    c = test_pow_1(1, 2);
+    double _lpython_return_variable;
+    _lpython_return_variable = (double)(std::pow(x, y));
+    return _lpython_return_variable;
 }
 
 void test_pow()
@@ -61,21 +49,22 @@ int32_t test_pow_1(int32_t a, int32_t b)
     return _lpython_return_variable;
 }
 
-double __lpython_overloaded_0__pow(int32_t x, int32_t y)
+void main0()
 {
-    double _lpython_return_variable;
-    _lpython_return_variable = (double)(std::pow(x, y));
-    return _lpython_return_variable;
+    int32_t c;
+    test_pow();
+    c = test_pow_1(1, 2);
 }
 
-float _lfortran_caimag(std::complex<float> x);
-
-double _lfortran_zaimag(std::complex<double> x);
+void __main__global_stmts()
+{
+    main0();
+}
 
 namespace {
 
 void main2() {
-    _lpython_main_program();
+    __main__global_stmts();
 }
 
 }

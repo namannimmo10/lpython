@@ -3,11 +3,11 @@
 #include <libasr/exception.h>
 #include <libasr/asr_utils.h>
 #include <libasr/asr_verify.h>
-#include <libasr/pass/do_loops.h>
+#include <libasr/pass/replace_do_loops.h>
 #include <libasr/pass/stmt_walk_visitor.h>
 #include <libasr/pass/pass_utils.h>
 
-namespace LFortran {
+namespace LCompilers {
 
 using ASR::down_cast;
 using ASR::is_a;
@@ -36,20 +36,28 @@ The comparison is >= for c<0.
 class DoLoopVisitor : public ASR::StatementWalkVisitor<DoLoopVisitor>
 {
 public:
+    bool use_loop_variable_after_loop = false;
     DoLoopVisitor(Allocator &al) : StatementWalkVisitor(al) {
     }
 
     void visit_DoLoop(const ASR::DoLoop_t &x) {
-        pass_result = PassUtils::replace_doloop(al, x);
+        pass_result = PassUtils::replace_doloop(al, x, -1, use_loop_variable_after_loop);
+    }
+
+    void visit_DoConcurrentLoop(const ASR::DoConcurrentLoop_t &x) {
+        ASR::asr_t* do_loop = ASR::make_DoLoop_t(al, x.base.base.loc, s2c(al, ""), x.m_head, x.m_body, x.n_body, nullptr, 0);
+        const ASR::DoLoop_t &do_loop_ref = (const ASR::DoLoop_t&)(*do_loop);
+        pass_result = PassUtils::replace_doloop(al, do_loop_ref, -1, use_loop_variable_after_loop);
     }
 };
 
 void pass_replace_do_loops(Allocator &al, ASR::TranslationUnit_t &unit,
-                           const LCompilers::PassOptions& /*pass_options*/) {
+                           const LCompilers::PassOptions& pass_options) {
     DoLoopVisitor v(al);
     // Each call transforms only one layer of nested loops, so we call it twice
     // to transform doubly nested loops:
     v.asr_changed = true;
+    v.use_loop_variable_after_loop = pass_options.use_loop_variable_after_loop;
     while( v.asr_changed ) {
         v.asr_changed = false;
         v.visit_TranslationUnit(unit);
@@ -57,4 +65,4 @@ void pass_replace_do_loops(Allocator &al, ASR::TranslationUnit_t &unit,
 }
 
 
-} // namespace LFortran
+} // namespace LCompilers

@@ -1,0 +1,13 @@
+{
+    "basename": "asr-test_annassign_01-2f18669",
+    "cmd": "lpython --show-asr --no-color {infile} -o {outfile}",
+    "infile": "tests/errors/test_annassign_01.py",
+    "infile_hash": "68f667b69b25d6a5f7f281a6dc7f2e2912511d8f4f20dbeab8442436",
+    "outfile": null,
+    "outfile_hash": null,
+    "stdout": null,
+    "stdout_hash": null,
+    "stderr": "asr-test_annassign_01-2f18669.stderr",
+    "stderr_hash": "28c68e6612db1644548768280ac3d35d3735a13cd32c04da44cec570",
+    "returncode": 2
+}

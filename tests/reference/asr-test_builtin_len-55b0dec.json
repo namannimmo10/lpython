@@ -2,11 +2,11 @@
     "basename": "asr-test_builtin_len-55b0dec",
     "cmd": "lpython --show-asr --no-color {infile} -o {outfile}",
     "infile": "tests/../integration_tests/test_builtin_len.py",
-    "infile_hash": "e202dc8c0fe5b9c3e3794ced531009700e2d98fd7e99e2ba2ecb3627",
+    "infile_hash": "fd1048585d9628ca38f6f21cdcfb3b44c355bbf6df2275a133f82a6f",
     "outfile": null,
     "outfile_hash": null,
     "stdout": "asr-test_builtin_len-55b0dec.stdout",
-    "stdout_hash": "c38df3e6ad3dae912abc490883e09262233fc354b385eee6e1a7b57e",
+    "stdout_hash": "e3800dde0706bb5dc06f1c7e0bc748780d7af02bf76d28ee05cecfa3",
     "stderr": null,
     "stderr_hash": null,
     "returncode": 0

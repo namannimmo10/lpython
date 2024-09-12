@@ -17,13 +17,8 @@ Kokkos::View<T*> from_std_vector(const std::vector<T> &v)
     return r;
 }
 
-
-struct dimension_descriptor
-{
-    int32_t lower_bound, length;
-};
 // Forward declarations
-void _lpython_main_program();
+void __main__global_stmts();
 int32_t check();
 void main0();
 int32_t test(int32_t a, int32_t b);
@@ -31,9 +26,11 @@ namespace {
 }
 
 // Implementations
-void _lpython_main_program()
+int32_t test(int32_t a, int32_t b)
 {
-    main0();
+    int32_t _lpython_return_variable;
+    _lpython_return_variable = std::pow(a, b);
+    return _lpython_return_variable;
 }
 
 int32_t check()
@@ -51,17 +48,15 @@ void main0()
     x = check();
 }
 
-int32_t test(int32_t a, int32_t b)
+void __main__global_stmts()
 {
-    int32_t _lpython_return_variable;
-    _lpython_return_variable = std::pow(a, b);
-    return _lpython_return_variable;
+    main0();
 }
 
 namespace {
 
 void main2() {
-    _lpython_main_program();
+    __main__global_stmts();
 }
 
 }

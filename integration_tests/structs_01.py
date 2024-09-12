@@ -1,4 +1,4 @@
-from ltypes import i32, f32, f64, dataclass
+from lpython import i32, f32, f64, dataclass, InOut
 
 @dataclass
 class A:
@@ -9,13 +9,12 @@ def f(a: A):
     print(a.x)
     print(a.y)
 
-def change_struct(a: A):
+def change_struct(a: InOut[A]):
     a.x = a.x + 1
     a.y = a.y + f32(1)
 
 def g():
-    x: A
-    x = A(f32(3.25), 3)
+    x: A = A(f32(3.25), 3)
     f(x)
     assert x.x == 3
     assert f64(x.y) == 3.25

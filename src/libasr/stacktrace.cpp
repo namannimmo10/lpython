@@ -36,11 +36,12 @@
 
 #ifdef HAVE_LFORTRAN_MACHO
 #  include <mach-o/dyld.h>
+#  include <limits.h> // PATH_MAX
 #endif
 
 #ifdef HAVE_LFORTRAN_BFD
 // For bfd_* family of functions for loading debugging symbols from the binary
-// This is the only nonstandard header file and the binary needs to be linked
+// This is the only nonstandard header file and the binary must be linked
 // with "-lbfd".
 // Note: on macOS, one must call `dsymutil` on any binary in order for BFD to
 // be able to find line number information. Example:
@@ -55,7 +56,7 @@
 #  include <bfd.h>
 #endif
 
-namespace LFortran {
+namespace LCompilers {
 
 std::string binary_executable_path = "/proc/self/exe";
 
@@ -134,7 +135,7 @@ void get_local_address(StacktraceItem &item)
       // happen if the stacktrace is somehow corrupted. In that case, we simply
       // abort here.
       std::cout << "The stack address was not found in any shared library or the main program, the stack is probably corrupted. Aborting." << std::endl;
-      abort();
+      exit(1);
     }
 #else
 #ifdef HAVE_LFORTRAN_MACHO
@@ -178,7 +179,7 @@ void get_local_address(StacktraceItem &item)
         }
     }
     std::cout << "The stack address was not found in any shared library or the main program, the stack is probably corrupted. Aborting." << std::endl;
-    abort();
+    exit(1);
 #else
     item.local_pc=0;
 #endif // HAVE_LFORTRAN_MACHO
@@ -189,9 +190,9 @@ void get_local_address(StacktraceItem &item)
 
 
 /* Demangles the function name if needed (if the 'name' is coming from C, it
-   doesn't have to be demangled, if it's coming from C++, it needs to be).
+   doesn't have to be demangled, if it's coming from C++, it must be).
 
-   Makes sure that it ends with (), which is automatic in C++, but it has to be
+   Makes sure that it ends with (), which is automatic in C++, but it must be
    added by hand in C.
 */
 std::string demangle_function_name(std::string name)
@@ -647,4 +648,4 @@ std::string error_stacktrace(const std::vector<StacktraceItem> &stacktrace)
     return stacktrace2str(d, stacktrace_depth-1);
 }
 
-} // namespace LFortran
+} // namespace LCompilers

@@ -1,4 +1,4 @@
-from ltypes import i32, f64
+from lpython import i32, f64
 
 # Test: Printing ListConstant
 def f():
@@ -11,10 +11,14 @@ def f():
     print(b)
     print(c)
     print(d)
+    print(a, a, b, c, d)
+    print(a, a, 1, b, c, 1.1, d)
 
     # print list constant
     print([-3, 2, 1, 0])
     print(['a', 'b', 'c', 'd' , 'e', 'f'])
+    print([1, 2, 3, 4], a, c)
+
 
 def test_nested_lists():
     w: list[list[list[list[list[f64]]]]] = [[[[[2.13, -98.17]]], [[[1.11]]]]]
@@ -26,6 +30,18 @@ def test_nested_lists():
     print(x)
     print(y)
     print(z)
+
+
+def test_print_list_tuple():
+    a: list[tuple[i32, i32]] = [(1, 2), (3, 4), (5, 6)]
+    b: tuple[list[str], list[i32], f64]
+    c: list[list[tuple[i32, str]]] = [[(1, 'a'), (2, 'b')], [(3, 'c'), (4, 'd')]]
+    b1: list[str] = ['a', 'bb', 'ccc', 'dddd', 'eeeee']
+    b2: list[i32] = [10, 20, 30, 40]
+    b = (b1, b2, 6.0305)
+    print(a, b)
+    print(c, b1, b2, 3.420, 'okay', True, 14483)
+
 
 def test_nested_lists2():
     # It tests list printing on scale like lists of size (approx) 100.
@@ -72,13 +88,18 @@ def test_nested_lists2():
          [  -0.32,   68.81,  -55.09],
          [  97.28,  -28.2 ,  -62.61]]]]
 
-    # shape = (5, 5, 5), where each element is a string of random alphanumerals and length betweem 0 and 10
+    # shape = (5, 5, 5), where each element is a string of random alphanumerals and length between 0 and 10
     r: list[list[list[str]]] = [[['Io', 'tl', 'bLvjV', 'wjFKQ', 'lY2'], ['Be2l6bqE', 'pQER3utIXA', 'llZBJj5Cdu', 'C8', 'gwTr77PdYR'], ['4M6L', 'ktPdowqERy', 'KSifqTkR', 'ZE2p1N78f1', 'Mi5e87Xw'], ['uwfzqDq9g', 'QaM1s', '', '', 'LB'], ['OJFRY6k', 'iz7Oie', '', 'LUYLF', 'JBND5FuV7l']], [['m', 'WIQBQfV', 'jxjDrqxu', 'kea', 'mu'], ['', 'GI8aOwLMe', 'Y5m8', 'a02Rz', 'xNKCJ'], ['LzkhyiJQHP', 'uzc3xyoXL', 'sKGnYfpRy', '7x', 'WTVKrnPO'], ['TZa6', 'GXRuyRX', 'R', 'JQxS', 'OH'], ['bSVJZ1OQ', 'M', 'I9omlF', 'x7FR', 'XtpL']], [['DKOpK', 'eg8Nz', 'ru', 'Sj', 'YUDxyI'], ['Q5uyhvp', 'Ydx', 'p', 'DLM5RX', 'pwOujxCO'], ['s5GOWnNJV', 'af', 'KAkD', '4IIZK', 'JQK040x'], ['9vF', '9pc7R8v', 'nDReIU7', 'K', 'btn'], ['', 'wVeivkdi', '', '', 'C']], [['vNTtcRXD', 'rsi', 'YsoF7mZD', 'VrPXU50rgA', 'mG7zqN0G'], ['la7cJ', 'M5rLJ8Go', 'gb', 'FjKwYZ7E', 'uSPD'], ['', 'oOa79jWcMx', 'yyAYZZ', 'wbvggXm', 'aE3BkCL4'], ['RdP', 'Hwc0x9RZ', 'sy', '9', 'W1d9xA2BXe'], ['A', '', 'QnK', 'N5tzN', 'ou7Lp']], [['DL68rDF', 'v', 'kQ3Mxm', 'g', '6KTeF4Eo'], ['Hx9', 'Y1IzQm85Z4', '3D8', 'ZLZ5', 'rWn'], ['LtT', 'Dh5B', 'M', 'F', 'QTARbY'], ['Sh', 'WL', 'yvAfWvZSx1', '90yx', 'v'], ['', '7IBW', 'nI', '', '6Cbp5c8RT']]]
 
     print(p)
     print(q)
     print(r)
 
-f()
-test_nested_lists()
-test_nested_lists2()
+
+def check():
+  f()
+  test_nested_lists()
+  test_nested_lists2()
+  test_print_list_tuple()
+
+check()

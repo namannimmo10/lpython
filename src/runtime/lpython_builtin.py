@@ -1,31 +1,6 @@
-from ltypes import i8, i16, i32, i64, f32, f64, c32, c64, overload
+from lpython import (i8, i16, i32, i64, f32, f64, c32, c64, overload, u8,
+                     u16, u32, u64)
 #from sys import exit
-
-
-def ord(s: str) -> i32: # currently supports characters with unicode value between 32 to 126
-    """
-    Returns an integer representing the Unicode code
-    point of a given unicode character. This is the inverse of `chr()`.
-    """
-    if len(s) != 1:
-        return -1 # not a character
-    i: i32
-    for i in range(32, 127):
-        if chr(i) == s:
-            return i
-
-
-def chr(i: i32) -> str: # currently supports unicode values between 32 to 126
-    """
-    Returns the string representing a unicode character from
-    the given Unicode code point. This is the inverse of `ord()`.
-    """
-    if i < 32 or i > 126:
-        return "Not yet supported"
-    all_chars: str
-    all_chars = ' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~'
-    return all_chars[i - 32]
-
 
 #: abs() as a generic procedure.
 #: supported types for argument:
@@ -89,7 +64,7 @@ def abs(c: c32) -> f32:
     a: f32
     b: f32
     a = c.real
-    b = _lfortran_caimag(c)
+    b = c.imag
     return f32((a**f32(2) + b**f32(2))**f32(1/2))
 
 @overload
@@ -97,7 +72,7 @@ def abs(c: c64) -> f64:
     a: f64
     b: f64
     a = c.real
-    b = _lfortran_zaimag(c)
+    b = c.imag
     return (a**2.0 + b**2.0)**(1/2)
 
 @interface
@@ -161,6 +136,60 @@ def pow(x: bool, y: bool) -> i32:
 def pow(c: c32, y: i32) -> c32:
     return c**c32(y)
 
+# sum
+# supported data types: i32, i64, f32, f64
+
+@overload
+def sum(arr: list[i32]) -> i32:
+    """
+    Sum of the elements of `arr`.
+    """
+    sum: i32
+    sum = 0
+
+    i: i32
+    for i in range(len(arr)):
+        sum += arr[i]
+    return sum
+
+@overload
+def sum(arr: list[i64]) -> i64:
+    """
+    Sum of the elements of `arr`.
+    """
+    sum: i64
+    sum = i64(0)
+
+    i: i32
+    for i in range(len(arr)):
+        sum += arr[i]
+    return sum
+
+@overload
+def sum(arr: list[f32]) -> f32:
+    """
+    Sum of the elements of `arr`.
+    """
+    sum: f32
+    sum = f32(0.0)
+
+    i: i32
+    for i in range(len(arr)):
+        sum += arr[i]
+    return sum
+
+@overload
+def sum(arr: list[f64]) -> f64:
+    """
+    Sum of the elements of `arr`.
+    """
+    sum: f64
+    sum = 0.0
+
+    i: i32
+    for i in range(len(arr)):
+        sum += arr[i]
+    return sum
 
 def bin(n: i32) -> str:
     """
@@ -170,18 +199,20 @@ def bin(n: i32) -> str:
         return '0b0'
     prep: str
     prep = '0b'
-    if n < 0:
-        n = -n
+    n_: i32
+    n_ = n
+    if n_ < 0:
+        n_ = -n_
         prep = '-0b'
     res: str
     res = ''
-    if (n - _lpython_floordiv(n, 2)*2) == 0:
+    if (n_ - (n_ // 2)*2) == 0:
         res += '0'
     else:
         res += '1'
-    while n > 1:
-        n = _lpython_floordiv(n, 2)
-        if (n - _lpython_floordiv(n, 2)*2) == 0:
+    while n_ > 1:
+        n_ = (n_ // 2)
+        if (n_ - (n_ // 2)*2) == 0:
             res += '0'
         else:
             res += '1'
@@ -199,16 +230,18 @@ def hex(n: i32) -> str:
         return '0x0'
     prep: str
     prep = '0x'
-    if n < 0:
+    n_: i32
+    n_ = n
+    if n_ < 0:
         prep = '-0x'
-        n = -n
+        n_ = -n_
     res: str
     res = ""
     remainder: i32
-    while n > 0:
-        remainder = n - _lpython_floordiv(n, 16)*16
-        n -= remainder
-        n = _lpython_floordiv(n, 16)
+    while n_ > 0:
+        remainder = n_ - (n_ // 16)*16
+        n_ -= remainder
+        n_ = (n_ // 16)
         res += hex_values[remainder]
     return prep + res[::-1]
 
@@ -224,16 +257,18 @@ def oct(n: i32) -> str:
         return '0o0'
     prep: str
     prep = '0o'
-    if n < 0:
+    n_: i32
+    n_ = n
+    if n_ < 0:
         prep = '-0o'
-        n = -n
+        n_ = -n_
     res: str
     res = ""
     remainder: i32
-    while n > 0:
-        remainder = n - _lpython_floordiv(n, 8)*8
-        n -= remainder
-        n = _lpython_floordiv(n, 8)
+    while n_ > 0:
+        remainder = n_ - (n_ // 8)*8
+        n_ -= remainder
+        n_ = (n_ // 8)
         res += _values[remainder]
     return prep + res[::-1]
 
@@ -254,7 +289,7 @@ def round(value: f64) -> i32:
     elif f > 0.5:
         return i + 1
     else:
-        if i - _lpython_floordiv(i, 2) * 2 == 0:
+        if i - (i // 2) * 2 == 0:
             return i
         else:
             return i + 1
@@ -270,7 +305,7 @@ def round(value: f32) -> i32:
     elif f > 0.5:
         return i + 1
     else:
-        if i - _lpython_floordiv(i, 2) * 2 == 0:
+        if i - (i // 2) * 2 == 0:
             return i
         else:
             return i + 1
@@ -315,12 +350,12 @@ def complex(x: f64) -> c64:
 @interface
 @overload
 def complex(x: i32) -> c32:
-    return c32(x) + c32(0)*1j
+    return c32(x) + c32(0)*c32(1j)
 
 @interface
 @overload
 def complex(x: f32) -> c32:
-    return c32(x) + c32(0)*1j
+    return c32(x) + c32(0)*c32(1j)
 
 @interface
 @overload
@@ -388,7 +423,7 @@ def divmod(x: i32, y: i32) -> tuple[i32, i32]:
     if y == 0:
         raise ZeroDivisionError("Integer division or modulo by zero not possible")
     t: tuple[i32, i32]
-    t = (_lpython_floordiv(x, y), _mod(x, y))
+    t = ((x // y), _mod(x, y))
     return t
 
 
@@ -399,90 +434,54 @@ def lbound(x: i32[:], dim: i32) -> i32:
 def ubound(x: i32[:], dim: i32) -> i32:
     pass
 
-
-@ccall
-def _lfortran_caimag(x: c32) -> f32:
-    pass
-
-@ccall
-def _lfortran_zaimag(x: c64) -> f64:
-    pass
-
 @overload
 def _lpython_imag(x: c64) -> f64:
-    return _lfortran_zaimag(x)
+    return x.imag
 
 @overload
 def _lpython_imag(x: c32) -> f32:
-    return _lfortran_caimag(x)
+    return x.imag
 
 
 @overload
-def _lpython_floordiv(a: f64, b: f64) -> f64:
-    r: f64
-    r = a/b
-    result: i64
-    result = int(r)
-    if r >= 0.0 or f64(result) == r:
-        return float(result)
-    return float(result - i64(1))
-
+def _mod(a: i8, b: i8) -> i8:
+    return a - (a // b)*b
 
 @overload
-def _lpython_floordiv(a: f32, b: f32) -> f32:
-    r: f64
-    r = float(a)/float(b)
-    result: i32
-    resultf32: f32
-    result = i32(r)
-    if r >= 0.0 or f64(result) == r:
-        resultf32 = f32(1.0) * f32(result)
-    else:
-        resultf32 = f32(1.0) * f32(result) - f32(1.0)
-    return resultf32
-
-@overload
-def _lpython_floordiv(a: i32, b: i32) -> i32:
-    r: f64 # f32 rounds things up and gives incorrect results
-    r = float(a)/float(b)
-    result: i32
-    result = i32(r)
-    if r >= 0.0 or f64(result) == r:
-        return result
-    return result - 1
-
-@overload
-def _lpython_floordiv(a: i64, b: i64) -> i64:
-    r: f64
-    r = a/b
-    result: i64
-    result = int(r)
-    if r >= 0.0 or f64(result) == r:
-        return result
-    return result - i64(1)
-
-@overload
-def _lpython_floordiv(a: bool, b: bool) -> bool:
-    if b == False:
-        raise ValueError('Denominator cannot be False or 0.')
-    return a
-
+def _mod(a: i16, b: i16) -> i16:
+    return a - (a // b)*b
 
 @overload
 def _mod(a: i32, b: i32) -> i32:
-    return a - _lpython_floordiv(a, b)*b
+    return a - (a // b)*b
+
+@overload
+def _mod(a: u8, b: u8) -> u8:
+    return a - (a // b)*b
+
+@overload
+def _mod(a: u16, b: u16) -> u16:
+    return a - (a // b)*b
+
+@overload
+def _mod(a: u32, b: u32) -> u32:
+    return a - (a // b)*b
 
 @overload
 def _mod(a: f32, b: f32) -> f32:
-    return a - _lpython_floordiv(a, b)*b
+    return a - (a // b)*b
+
+@overload
+def _mod(a: u64, b: u64) -> u64:
+    return a - (a // b)*b
 
 @overload
 def _mod(a: i64, b: i64) -> i64:
-    return a - _lpython_floordiv(a, b)*b
+    return a - (a // b)*b
 
 @overload
 def _mod(a: f64, b: f64) -> f64:
-    return a - _lpython_floordiv(a, b)*b
+    return a - (a // b)*b
 
 
 @overload
@@ -612,12 +611,70 @@ def pow(x: i64, y: i64, z: i64) -> i64:
 def _lpython_str_capitalize(x: str) -> str:
     if len(x) == 0:
         return x
+    i:str
+    res:str = ""
+    for i in x:
+        if ord(i) >= 65 and ord(i) <= 90:  # Check if uppercase
+            res += chr(ord(i) + 32)  # Convert to lowercase using ASCII values
+        else:
+            res += i
+
     val: i32
-    val = ord(x[0])
-    if val >= ord('a') and val <= ord('x'):
+    val = ord(res[0])
+    if val >= ord('a') and val <= ord('z'):
         val -= 32
-    x = chr(val) + x[1:]
-    return x
+    res = chr(val) + res[1:]
+    return res
+
+
+@overload
+def _lpython_str_count(s: str, sub: str) -> i32:
+    s_len :i32; sub_len :i32; flag: bool; _len: i32;
+    count: i32; i: i32;
+    lps: list[i32] = []
+    s_len = len(s)
+    sub_len = len(sub)
+
+    if sub_len == 0:
+        return s_len + 1 
+
+    count = 0
+
+    for i in range(sub_len):
+        lps.append(0)
+
+    i = 1
+    _len = 0
+    while i < sub_len:
+        if sub[i] == sub[_len]:
+            _len += 1
+            lps[i] = _len
+            i += 1
+        else:
+            if _len != 0:
+                _len = lps[_len - 1]
+            else:
+                lps[i] = 0
+                i += 1
+
+    j: i32
+    j = 0
+    i = 0
+    while (s_len - i) >= (sub_len - j):
+        if sub[j] == s[i]:
+            i += 1
+            j += 1
+        if j == sub_len:
+            count += 1
+            j = lps[j - 1]
+        elif i < s_len and sub[j] != s[i]:
+            if j != 0:
+                j = lps[j - 1]
+            else:
+                i = i + 1
+
+    return count
+
 
 @overload
 def _lpython_str_lower(x: str) -> str:
@@ -625,11 +682,119 @@ def _lpython_str_lower(x: str) -> str:
     res = ""
     i:str
     for i in x:
-        if ord('A') <= ord(i) and ord('Z') >= ord(i):
+        if ord('A') <= ord(i) and ord(i) <= ord('Z'):
             res += chr(ord(i) +32)
         else:
             res += i
     return res
+
+@overload
+def _lpython_str_upper(x: str) -> str:
+    res: str
+    res = ""
+    i:str
+    for i in x:
+        if ord('a') <= ord(i) and ord(i) <= ord('z'):
+            res += chr(ord(i) -32)
+        else:
+            res += i
+    return res
+
+@overload
+def _lpython_str_join(s:str, lis:list[str]) -> str:
+    if len(lis) == 0: return ""
+    res:str = lis[0]
+    i:i32
+    for i in range(1, len(lis)):
+        res += s + lis[i]
+    return res
+
+def _lpython_str_isalpha(s: str) -> bool:
+    ch: str
+    if len(s) == 0: return False
+    for ch in s:
+        ch_ord: i32 = ord(ch)
+        if 65 <= ch_ord and ch_ord <= 90:
+            continue
+        if 97 <= ch_ord and ch_ord <= 122:
+            continue
+        return False
+    return True
+
+def _lpython_str_isalnum(s: str) -> bool:
+    ch: str
+    if len(s) == 0: return False
+    for ch in s:
+        ch_ord: i32 = ord(ch)
+        if 65 <= ch_ord and ch_ord <= 90:
+            continue
+        if 97 <= ch_ord and ch_ord <= 122:
+            continue
+        if 48 <= ch_ord and ch_ord <= 57:
+            continue
+        return False
+    return True
+
+def _lpython_str_isnumeric(s: str) -> bool:
+    ch: str
+    if len(s) == 0: return False
+    for ch in s:
+        ch_ord: i32 = ord(ch)
+        if 48 <= ch_ord and ch_ord <= 57:
+            continue
+        return False
+    return True
+
+def _lpython_str_title(s: str) -> str:
+    result: str = ""
+    capitalize_next: bool = True
+    ch: str
+    for ch in s:
+        ch_ord: i32 = ord(ch)
+        if ch_ord >= 97  and ch_ord <= 122:
+            if capitalize_next:
+                result += chr(ord(ch) - ord('a') + ord('A'))
+                capitalize_next = False
+            else:
+                result += ch
+        elif ch_ord >= 65 and ch_ord <= 90:
+            if capitalize_next:
+                result += ch
+                capitalize_next = False
+            else:
+                result += chr(ord(ch) + ord('a') - ord('A'))
+        else:
+            result += ch
+            capitalize_next = True
+
+    return result
+
+def _lpython_str_istitle(s: str) -> bool:
+    length: i32 = len(s)
+
+    if length == 0:
+        return False  # Empty string is not in title case
+
+    word_start: bool = True  # Flag to track the start of a word
+    ch: str
+    only_whitespace: bool = True 
+    for ch in s:
+        if ch.isalpha() and (ord('A') <= ord(ch) and ord(ch) <= ord('Z')):
+            only_whitespace = False
+            if word_start:
+                word_start = False
+            else:
+                return False  # Found an uppercase character in the middle of a word
+
+        elif ch.isalpha() and (ord('a') <= ord(ch) and ord(ch) <= ord('z')):
+            only_whitespace = False
+            if word_start:
+                return False  # Found a lowercase character in the middle of a word
+            word_start = False
+        else:
+            word_start = True
+
+    return True if not only_whitespace else False
 
 @overload
 def _lpython_str_find(s: str, sub: str) -> i32:
@@ -702,6 +867,77 @@ def _lpython_str_strip(x: str) -> str:
     return res
 
 @overload
+def _lpython_str_split(x: str) -> list[str]:
+    sep: str = ' '
+    res: list[str] = []
+    start:i32 = 0
+    ind: i32
+    x_strip: str = _lpython_str_strip(x)
+    if (x_strip == ""): 
+        return res
+    while True:
+        while (start < len(x_strip) and x_strip[start] == ' '):
+            start += 1
+        ind = _lpython_str_find(x_strip[start:len(x_strip)], sep)
+        if ind == -1:
+            res.append(x_strip[start:len(x_strip)])
+            break
+        else:
+            res.append(x_strip[start:start + ind])
+            start += ind + len(sep)
+    return res
+    
+@overload
+def _lpython_str_split(x: str, sep:str) -> list[str]:
+    if len(sep) == 0:
+        raise ValueError('empty separator')
+    res: list[str] = []
+    start:i32 = 0
+    ind: i32
+    while True:
+        ind = _lpython_str_find(x[start:len(x)], sep)
+        if ind == -1:
+            res.append(x[start:len(x)])
+            break
+        else:
+            res.append(x[start:start + ind])
+            start += ind + len(sep)
+    return res
+
+@overload
+def _lpython_str_replace(x: str, old:str, new:str) -> str:
+    return _lpython_str_replace(x, old, new, len(x))
+    
+
+@overload
+def _lpython_str_replace(x: str, old:str, new:str, count: i32) -> str:
+    if (old == ""):
+        res1: str = ""
+        s: str
+        for s in x:
+            res1 += new + s
+        return res1 + new
+    res: str = ""
+    i: i32 = 0
+    ind: i32 = -1
+    l: i32 = len(new)
+    lo: i32 = len(old)
+    lx: i32 = len(x)
+    c: i32 = 0
+    t: i32 = -1
+
+    while(c<count):
+        t = _lpython_str_find(x[i:lx], old)
+        if(t==-1):
+            break
+        ind = i + t
+        res = res + x[i:ind] + new
+        i = ind + lo
+        c = c + 1
+    res = res + x[i:lx]
+    return res
+
+@overload
 def _lpython_str_swapcase(s: str) -> str:
     res :str = ""
     cur: str
@@ -727,6 +963,177 @@ def _lpython_str_startswith(s: str ,sub: str) -> bool:
         res = res and (j == len(sub))
     return res
 
+@overload
+def _lpython_str_endswith(s: str, suffix: str) -> bool:
+
+    if(len(suffix) > len(s)):
+        return False
+
+    i : i32
+    i = 0
+    while(i < len(suffix)):
+        if(suffix[len(suffix) - i - 1] != s[len(s) - i - 1]):
+            return False
+        i += 1
+
+    return True
+
+@overload
+def _lpython_str_partition(s:str, sep: str) -> tuple[str, str, str]:
+    """
+    Returns a 3-tuple splitted around seperator
+    """
+    if len(s) == 0:
+        raise ValueError('empty string cannot be partitioned')
+    if len(sep) == 0:
+        raise ValueError('empty separator')
+    res : tuple[str, str, str]
+    ind : i32
+    ind = _lpython_str_find(s, sep)
+    if ind == -1:
+        res = (s, "", "")
+    else:
+        res = (s[0:ind], sep, s[ind+len(sep): len(s)])
+    return res
+
+@overload
+def _lpython_str_islower(s: str) -> bool:
+    is_cased_present: bool
+    is_cased_present = False
+    i:str
+    for i in s:
+        if (ord(i) >= 97 and ord(i) <= 122) or (ord(i) >= 65 and ord(i) <= 90): # Implies it is a cased letter
+            is_cased_present = True
+            if not(ord(i) >= 97 and ord(i) <= 122): # Not lowercase
+                return False
+    return is_cased_present
+
+@overload
+def _lpython_str_isupper(s: str) -> bool:
+    is_cased_present: bool
+    is_cased_present = False
+    i:str
+    for i in s:
+        if (ord(i) >= 97 and ord(i) <= 122) or (ord(i) >= 65 and ord(i) <= 90): # Implies it is a cased letter
+            is_cased_present = True
+            if not(ord(i) >= 65 and ord(i) <= 90): # Not lowercase
+                return False
+    return is_cased_present
+
+@overload
+def _lpython_str_isdecimal(s: str) -> bool:
+    if len(s) == 0:
+        return False
+    i:str
+    for i in s:
+        if (ord(i) < 48 or ord(i) > 57): # Implies it is not a digit
+            return False
+    return True
+
+@overload
+def _lpython_str_isascii(s: str) -> bool:
+    if len(s) == 0:
+        return True
+    i: str
+    for i in s:
+        if ord(i) < 0 or ord(i) > 127:
+            return False
+    return True
+
+def _lpython_str_isspace(s: str) -> bool:
+    # A Unicode character is considered a 'whitespace' if it has has a bidirectional
+    # type 'WS', 'B' or 'S'; or the category 'Zs'.
+    if len(s) == 0:
+        return False
+    
+    ch: str
+    for ch in s:
+        if not (ch == " "  or   # SPACE
+            ch == "\n"     or   # LINE FEED (LF)
+            ch == "\r"     or   # CARRIAGE RETURN (CR)
+            ch == "\t"     or   # CHARACTER TABULATION (HT)
+            ch == "\v"     or   # VERTICAL TAB (VT)
+            ch == "\f"     or   # FORM FEED (FF)
+            ch == "\u00A0" or   # NO-BREAK SPACE
+            ch == "\u1680" or   # OGHAM SPACE MARK
+            ch == "\u2000" or   # EN QUAD
+            ch == "\u2001" or   # EM QUAD
+            ch == "\u2002" or   # EN SPACE
+            ch == "\u2003" or   # EM SPACE
+            ch == "\u2004" or   # THREE-PER-EM SPACE
+            ch == "\u2005" or   # FOUR-PER-EM SPACE
+            ch == "\u2006" or   # SIX-PER-EM SPACE
+            ch == "\u2007" or   # FIGURE SPACE
+            ch == "\u2008" or   # PUNCTUATION SPACE
+            ch == "\u2009" or   # THIN SPACE
+            ch == "\u200A" or   # HAIR SPACE
+            ch == "\u2028" or   # LINE SEPARATOR
+            ch == "\u2029" or   # PARAGRAPH SEPARATOR
+            ch == "\u202F" or   # NARROW NO-BREAK SPACE
+            ch == "\u205F" or   # MEDIUM MATHEMATICAL SPACE
+            ch == "\u3000"      # IDEOGRAPHIC SPACE
+        ):
+            return False
+    return True
+
+@overload
+def _lpython_str_center(s: str, width: i32, fillchar: str) -> str:
+    """
+    Return centered in a string of length width. 
+    Padding is done using the specified fillchar (default is an ASCII space). 
+    The original string is returned if width is less than or equal to len(s).
+    """
+    if(len(fillchar) != 1):
+        raise TypeError("The fill character must be exactly one character long")
+    str_len: i32 = len(s)
+    if width <= str_len:
+        return s
+    width -= str_len
+    result: str = ""
+    left_padding: i32 = i32(width/2) + _mod(width,2)
+    i: i32 
+    for i in range(left_padding):
+        result += fillchar
+    right_padding: i32 = width - left_padding
+    result += s
+    for i in range(right_padding):
+        result += fillchar
+    return result
+
+@overload
+def _lpython_str_center(s: str, width: i32) -> str:
+    return _lpython_str_center(s, width, ' ')
+
+@overload
+def _lpython_str_expandtabs(s: str, tabsize: i32) -> str:
+    """
+    Return a copy of the string where all tab characters are replaced 
+    by one or more spaces, depending on the current column and the given tab size.
+    """
+    if len(s) == 0:
+        return s
+    col: i32 = 0
+    result: str = ""
+    c: str
+    for c in s:
+        if c == '\t':
+            if tabsize > 0:
+                i: i32
+                iterations: i32 = tabsize - _mod(col,tabsize)
+                for i in range(iterations):
+                    result += ' '
+            col = 0
+        elif c == '\n' or c == '\r':
+            result += c
+            col = 0
+        else:
+            result += c
+            col += 1
+    return result
+
+@overload
+def _lpython_str_expandtabs(s: str) -> str:
+    return _lpython_str_expandtabs(s, 8)
 
 def list(s: str) -> list[str]:
     l: list[str] = []

@@ -17,23 +17,13 @@ Kokkos::View<T*> from_std_vector(const std::vector<T> &v)
     return r;
 }
 
-
-struct dimension_descriptor
-{
-    int32_t lower_bound, length;
-};
 // Forward declarations
-void _lpython_main_program();
+void __main__global_stmts();
 void f();
 namespace {
 }
 
 // Implementations
-void _lpython_main_program()
-{
-    f();
-}
-
 void f()
 {
     bool b;
@@ -44,10 +34,15 @@ void f()
     std::cout << b << std::endl;
 }
 
+void __main__global_stmts()
+{
+    f();
+}
+
 namespace {
 
 void main2() {
-    _lpython_main_program();
+    __main__global_stmts();
 }
 
 }

@@ -2,11 +2,11 @@
     "basename": "asr-generics_02-e2ea5c9",
     "cmd": "lpython --show-asr --no-color {infile} -o {outfile}",
     "infile": "tests/../integration_tests/generics_02.py",
-    "infile_hash": "6f748cbf059da328ff092c08ad0063e639ba460eb481fadfadeebc51",
+    "infile_hash": "8406b1b9329997678ed067f896373fbbf49daeb2e379c700c5c2e917",
     "outfile": null,
     "outfile_hash": null,
     "stdout": "asr-generics_02-e2ea5c9.stdout",
-    "stdout_hash": "b2330ca2b425fe409fa533236870dd171c10d226b9afa99dac633c50",
+    "stdout_hash": "47fea2d8fe6009063e7bbe136cadfaa875168cab41c3e99fbdbe6ba6",
     "stderr": null,
     "stderr_hash": null,
     "returncode": 0

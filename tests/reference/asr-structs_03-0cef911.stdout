@@ -1,1 +1,407 @@
-(TranslationUnit (SymbolTable 1 {A: (StructType (SymbolTable 2 {x: (Variable 2 x [] Local () () Default (Integer 4 []) Source Public Required .false.), y: (Variable 2 y [] Local () () Default (Real 4 []) Source Public Required .false.)}) A [] [x y] Source Public .false. () ()), _lpython_main_program: (Function (SymbolTable 6 {}) _lpython_main_program [g] [] [(SubroutineCall 1 g () [] ())] () Source Public Implementation () .false. .false. .false. .false. .false. [] [] .false.), f: (Function (SymbolTable 3 {pa: (Variable 3 pa [] In () () Default (Pointer (Struct 1 A [])) Source Public Required .false.)}) f [] [(Var 3 pa)] [(Print () [(StructInstanceMember (Var 3 pa) 2 x (Integer 4 []) ())] () ()) (Print () [(StructInstanceMember (Var 3 pa) 2 y (Real 4 []) ())] () ())] () Source Public Implementation () .false. .false. .false. .false. .false. [] [] .false.), g: (Function (SymbolTable 4 {x: (Variable 4 x [] Local () () Default (Struct 1 A []) Source Public Required .false.), xp: (Variable 4 xp [] Local () () Default (Pointer (Struct 1 A [])) Source Public Required .false.)}) g [f] [] [(= (Var 4 x) (StructTypeConstructor 1 A [(IntegerConstant 3 (Integer 4 [])) (Cast (RealConstant 3.250000 (Real 8 [])) RealToReal (Real 4 []) (RealConstant 3.250000 (Real 4 [])))] (Struct 1 A []) ()) ()) (= (Var 4 xp) (GetPointer (Var 4 x) (Pointer (Struct 1 A [])) ()) ()) (Assert (IntegerCompare (StructInstanceMember (Var 4 xp) 2 x (Integer 4 []) ()) Eq (IntegerConstant 3 (Integer 4 [])) (Logical 4 []) ()) ()) (Assert (RealCompare (Cast (StructInstanceMember (Var 4 xp) 2 y (Real 4 []) ()) RealToReal (Real 8 []) ()) Eq (RealConstant 3.250000 (Real 8 [])) (Logical 4 []) ()) ()) (= (StructInstanceMember (Var 4 xp) 2 x (Integer 4 []) ()) (IntegerConstant 5 (Integer 4 [])) ()) (= (StructInstanceMember (Var 4 xp) 2 y (Real 4 []) ()) (Cast (RealConstant 5.500000 (Real 8 [])) RealToReal (Real 4 []) (RealConstant 5.500000 (Real 4 []))) ()) (SubroutineCall 1 f () [((Var 4 xp))] ())] () Source Public Implementation () .false. .false. .false. .false. .false. [] [] .false.), main_program: (Program (SymbolTable 5 {}) main_program [] [(SubroutineCall 1 _lpython_main_program () [] ())])}) [])
+(TranslationUnit
+    (SymbolTable
+        1
+        {
+            __main__:
+                (Module
+                    (SymbolTable
+                        2
+                        {
+                            A:
+                                (Struct
+                                    (SymbolTable
+                                        3
+                                        {
+                                            x:
+                                                (Variable
+                                                    3
+                                                    x
+                                                    []
+                                                    Local
+                                                    ()
+                                                    ()
+                                                    Default
+                                                    (Integer 4)
+                                                    ()
+                                                    Source
+                                                    Public
+                                                    Required
+                                                    .false.
+                                                ),
+                                            y:
+                                                (Variable
+                                                    3
+                                                    y
+                                                    []
+                                                    Local
+                                                    ()
+                                                    ()
+                                                    Default
+                                                    (Real 4)
+                                                    ()
+                                                    Source
+                                                    Public
+                                                    Required
+                                                    .false.
+                                                )
+                                        })
+                                    A
+                                    []
+                                    [x
+                                    y]
+                                    []
+                                    Source
+                                    Public
+                                    .false.
+                                    .false.
+                                    [(())
+                                    (())]
+                                    ()
+                                    ()
+                                ),
+                            __main__global_stmts:
+                                (Function
+                                    (SymbolTable
+                                        7
+                                        {
+                                            
+                                        })
+                                    __main__global_stmts
+                                    (FunctionType
+                                        []
+                                        ()
+                                        Source
+                                        Implementation
+                                        ()
+                                        .false.
+                                        .false.
+                                        .false.
+                                        .false.
+                                        .false.
+                                        []
+                                        .false.
+                                    )
+                                    [g]
+                                    []
+                                    [(SubroutineCall
+                                        2 g
+                                        ()
+                                        []
+                                        ()
+                                    )]
+                                    ()
+                                    Public
+                                    .false.
+                                    .false.
+                                    ()
+                                ),
+                            f:
+                                (Function
+                                    (SymbolTable
+                                        4
+                                        {
+                                            pa:
+                                                (Variable
+                                                    4
+                                                    pa
+                                                    []
+                                                    In
+                                                    ()
+                                                    ()
+                                                    Default
+                                                    (Pointer
+                                                        (StructType
+                                                            [(Integer 4)
+                                                            (Real 4)]
+                                                            []
+                                                            .true.
+                                                            2 A
+                                                        )
+                                                    )
+                                                    ()
+                                                    Source
+                                                    Public
+                                                    Required
+                                                    .false.
+                                                )
+                                        })
+                                    f
+                                    (FunctionType
+                                        [(Pointer
+                                            (StructType
+                                                [(Integer 4)
+                                                (Real 4)]
+                                                []
+                                                .true.
+                                                2 A
+                                            )
+                                        )]
+                                        ()
+                                        Source
+                                        Implementation
+                                        ()
+                                        .false.
+                                        .false.
+                                        .false.
+                                        .false.
+                                        .false.
+                                        []
+                                        .false.
+                                    )
+                                    []
+                                    [(Var 4 pa)]
+                                    [(Print
+                                        [(StructInstanceMember
+                                            (Var 4 pa)
+                                            3 x
+                                            (Integer 4)
+                                            ()
+                                        )]
+                                        ()
+                                        ()
+                                    )
+                                    (Print
+                                        [(StructInstanceMember
+                                            (Var 4 pa)
+                                            3 y
+                                            (Real 4)
+                                            ()
+                                        )]
+                                        ()
+                                        ()
+                                    )]
+                                    ()
+                                    Public
+                                    .false.
+                                    .false.
+                                    ()
+                                ),
+                            g:
+                                (Function
+                                    (SymbolTable
+                                        5
+                                        {
+                                            x:
+                                                (Variable
+                                                    5
+                                                    x
+                                                    []
+                                                    Local
+                                                    ()
+                                                    ()
+                                                    Default
+                                                    (StructType
+                                                        [(Integer 4)
+                                                        (Real 4)]
+                                                        []
+                                                        .true.
+                                                        2 A
+                                                    )
+                                                    ()
+                                                    Source
+                                                    Public
+                                                    Required
+                                                    .false.
+                                                ),
+                                            xp:
+                                                (Variable
+                                                    5
+                                                    xp
+                                                    []
+                                                    Local
+                                                    ()
+                                                    ()
+                                                    Default
+                                                    (Pointer
+                                                        (StructType
+                                                            [(Integer 4)
+                                                            (Real 4)]
+                                                            []
+                                                            .true.
+                                                            2 A
+                                                        )
+                                                    )
+                                                    ()
+                                                    Source
+                                                    Public
+                                                    Required
+                                                    .false.
+                                                )
+                                        })
+                                    g
+                                    (FunctionType
+                                        []
+                                        ()
+                                        Source
+                                        Implementation
+                                        ()
+                                        .false.
+                                        .false.
+                                        .false.
+                                        .false.
+                                        .false.
+                                        []
+                                        .false.
+                                    )
+                                    [f]
+                                    []
+                                    [(Assignment
+                                        (Var 5 x)
+                                        (StructConstructor
+                                            2 A
+                                            [((IntegerConstant 3 (Integer 4)))
+                                            ((Cast
+                                                (RealConstant
+                                                    3.250000
+                                                    (Real 8)
+                                                )
+                                                RealToReal
+                                                (Real 4)
+                                                (RealConstant
+                                                    3.250000
+                                                    (Real 4)
+                                                )
+                                            ))]
+                                            (StructType
+                                                [(Integer 4)
+                                                (Real 4)]
+                                                []
+                                                .true.
+                                                2 A
+                                            )
+                                            ()
+                                        )
+                                        ()
+                                    )
+                                    (Assignment
+                                        (Var 5 xp)
+                                        (GetPointer
+                                            (Var 5 x)
+                                            (Pointer
+                                                (StructType
+                                                    [(Integer 4)
+                                                    (Real 4)]
+                                                    []
+                                                    .true.
+                                                    2 A
+                                                )
+                                            )
+                                            ()
+                                        )
+                                        ()
+                                    )
+                                    (Assert
+                                        (IntegerCompare
+                                            (StructInstanceMember
+                                                (Var 5 xp)
+                                                3 x
+                                                (Integer 4)
+                                                ()
+                                            )
+                                            Eq
+                                            (IntegerConstant 3 (Integer 4))
+                                            (Logical 4)
+                                            ()
+                                        )
+                                        ()
+                                    )
+                                    (Assert
+                                        (RealCompare
+                                            (Cast
+                                                (StructInstanceMember
+                                                    (Var 5 xp)
+                                                    3 y
+                                                    (Real 4)
+                                                    ()
+                                                )
+                                                RealToReal
+                                                (Real 8)
+                                                ()
+                                            )
+                                            Eq
+                                            (RealConstant
+                                                3.250000
+                                                (Real 8)
+                                            )
+                                            (Logical 4)
+                                            ()
+                                        )
+                                        ()
+                                    )
+                                    (Assignment
+                                        (StructInstanceMember
+                                            (Var 5 xp)
+                                            3 x
+                                            (Integer 4)
+                                            ()
+                                        )
+                                        (IntegerConstant 5 (Integer 4))
+                                        ()
+                                    )
+                                    (Assignment
+                                        (StructInstanceMember
+                                            (Var 5 xp)
+                                            3 y
+                                            (Real 4)
+                                            ()
+                                        )
+                                        (Cast
+                                            (RealConstant
+                                                5.500000
+                                                (Real 8)
+                                            )
+                                            RealToReal
+                                            (Real 4)
+                                            (RealConstant
+                                                5.500000
+                                                (Real 4)
+                                            )
+                                        )
+                                        ()
+                                    )
+                                    (SubroutineCall
+                                        2 f
+                                        ()
+                                        [((Var 5 xp))]
+                                        ()
+                                    )]
+                                    ()
+                                    Public
+                                    .false.
+                                    .false.
+                                    ()
+                                )
+                        })
+                    __main__
+                    []
+                    .false.
+                    .false.
+                ),
+            main_program:
+                (Program
+                    (SymbolTable
+                        8
+                        {
+                            __main__global_stmts:
+                                (ExternalSymbol
+                                    8
+                                    __main__global_stmts
+                                    2 __main__global_stmts
+                                    __main__
+                                    []
+                                    __main__global_stmts
+                                    Public
+                                )
+                        })
+                    main_program
+                    [__main__]
+                    [(SubroutineCall
+                        8 __main__global_stmts
+                        2 __main__global_stmts
+                        []
+                        ()
+                    )]
+                )
+        })
+    []
+)

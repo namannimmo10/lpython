@@ -2,11 +2,11 @@
     "basename": "cpp-expr7-529bd53",
     "cmd": "lpython --no-color --show-cpp {infile}",
     "infile": "tests/expr7.py",
-    "infile_hash": "7e10fd3558ed9a0c805fd1f27740f6cc539142917841585c7679779b",
+    "infile_hash": "7ef1383d1798621ee35adb7296bfe66dcdc08a21ac8dc86b9ce42878",
     "outfile": null,
     "outfile_hash": null,
     "stdout": "cpp-expr7-529bd53.stdout",
-    "stdout_hash": "0d9fc3925dab973a245845011037dd0582674d5c8a4db07b300289fb",
+    "stdout_hash": "24b9dbec9975483d188f9ff05d5bda7117eb1b6d618424118db3e359",
     "stderr": "cpp-expr7-529bd53.stderr",
     "stderr_hash": "6e9790ac88db1a9ead8f64a91ba8a6605de67167037908a74b77be0c",
     "returncode": 0

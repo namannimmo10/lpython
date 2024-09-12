@@ -34,6 +34,8 @@ python src/libasr/asdl_cpp.py grammar/Python.asdl src/lpython/python_ast.h
 python grammar/asdl_py.py
 # Generate a wasm_visitor.h from src/libasr/wasm_instructions.txt (C++)
 python src/libasr/wasm_instructions_visitor.py
+# Generate the intrinsic_function_registry_util.h (C++)
+python src/libasr/intrinsic_func_registry_util_gen.py
 
 # Generate the tokenizer and parser
 pushd src/lpython/parser && re2c -W -b tokenizer.re -o tokenizer.cpp && popd
@@ -51,7 +53,7 @@ cd test-bld
 # compiled in Release mode and we get link failures if we mix and match build
 # modes:
 BUILD_TYPE = "Release"
-cmake -G $LFORTRAN_CMAKE_GENERATOR -DCMAKE_VERBOSE_MAKEFILE=ON -DWITH_LLVM=yes -DWITH_LSP=yes -DWITH_XEUS=yes -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DWITH_LFORTRAN_BINARY_MODFILES=no -DCMAKE_BUILD_TYPE=@(BUILD_TYPE) ..
+cmake -G $LFORTRAN_CMAKE_GENERATOR -DCMAKE_VERBOSE_MAKEFILE=ON -DWITH_LLVM=yes -DWITH_LSP=yes -DWITH_XEUS=yes -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX -DWITH_LFORTRAN_BINARY_MODFILES=no -DCMAKE_BUILD_TYPE=@(BUILD_TYPE) -DWITH_RUNTIME_STACKTRACE=$ENABLE_RUNTIME_STACKTRACE ..
 cmake --build . --target install -j16
 ./src/lpython/tests/test_lpython
 #./src/bin/lpython < ../src/bin/example_input.txt

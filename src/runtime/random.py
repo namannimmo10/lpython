@@ -1,4 +1,4 @@
-from ltypes import i32, f64, ccall
+from lpython import i32, f64, ccall
 
 e: f64 = 2.718281828459045235360287471352662497757
 eps: f64 = 1e-16
@@ -30,6 +30,30 @@ def random() -> f64:
 
 @ccall
 def _lfortran_random() -> f64:
+    pass
+
+@overload
+def seed() -> None:
+    """
+    Initializes the random number generator.
+    """
+    _lfortran_init_random_clock()
+    return
+
+@overload
+def seed(seed: i32) -> None:
+    """
+    Initializes the random number generator.
+    """
+    _lfortran_init_random_seed(seed)
+    return
+
+@ccall
+def _lfortran_init_random_clock() -> None:
+    pass
+
+@ccall
+def _lfortran_init_random_seed(seed: i32) -> None:
     pass
 
 def randrange(lower: i32, upper: i32) -> i32:

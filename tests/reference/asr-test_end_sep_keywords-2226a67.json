@@ -1,0 +1,13 @@
+{
+    "basename": "asr-test_end_sep_keywords-2226a67",
+    "cmd": "lpython --show-asr --no-color {infile} -o {outfile}",
+    "infile": "tests/test_end_sep_keywords.py",
+    "infile_hash": "5ea30711228d4ebb64266988c1a706a3d64f196457b939ed3bf15ecf",
+    "outfile": null,
+    "outfile_hash": null,
+    "stdout": "asr-test_end_sep_keywords-2226a67.stdout",
+    "stdout_hash": "7d5aef16b3fe6850f791b24a7aa4491ced6f840b2d52f0dbac5234ca",
+    "stderr": null,
+    "stderr_hash": null,
+    "returncode": 0
+}

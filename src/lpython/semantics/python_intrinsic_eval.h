@@ -7,7 +7,7 @@
 #include <lpython/utils.h>
 #include <lpython/semantics/semantic_exception.h>
 
-namespace LFortran {
+namespace LCompilers::LPython {
 
 struct IntrinsicNodeHandler {
 
@@ -49,16 +49,91 @@ struct IntrinsicNodeHandler {
                                         const Location &loc) {
         ASR::expr_t *arg = nullptr, *value = nullptr;
         ASR::ttype_t *type = nullptr;
-        if (args.size() > 1) {
-            throw SemanticError("Either 0 or 1 argument is expected in 'int()'",
+        if (args.size() > 2) {
+            throw SemanticError("'int()' takes at most 2 arguments (" + std::to_string(args.size()) + " given)",
                     loc);
         }
-        if (args.size() > 0) {
+        if (args.size() >= 1) {
             arg = args[0].m_value;
             type = ASRUtils::expr_type(arg);
+            if (ASRUtils::is_character(*type)) {
+                int32_t base;
+                if (args.size() == 1) {
+                    base = 10;
+                } else {
+                    arg = args[1].m_value;
+                    type = ASRUtils::expr_type(arg);
+                    if (ASRUtils::is_integer(*type)) {
+                        base = ASR::down_cast<ASR::IntegerConstant_t>(
+                                            ASRUtils::expr_value(arg))->m_n;
+                        if ((base != 0 && base < 2) || base > 36) {
+                            throw SemanticError("int() base must be >= 2 and <= 36, or 0", loc);
+                        }
+                    } else {
+                        throw SemanticError("'" + ASRUtils::type_to_str_python(type) + "' object cannot be interpreted as an integer",
+                                arg->base.loc);
+                    }   
+                }
+                arg = args[0].m_value;
+                type = ASRUtils::expr_type(arg);
+                ASR::ttype_t *to_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc, 8));
+                if (ASRUtils::expr_value(arg) != nullptr) {
+                    char *c = ASR::down_cast<ASR::StringConstant_t>(
+                                        ASRUtils::expr_value(arg))->m_s;
+                    int ival = 0;
+                    bool zero_based = false;
+                    char *ch = c;
+                    if (*ch == '-') {
+                        ch++;
+                    }
+                    if (base == 0) {
+                        zero_based = true;
+                        if (*ch == '0') {
+                            ch++;
+                            if (*ch == 'x' || *ch == 'X') {
+                                base = 16;
+                                ch++;
+                            } else if (*ch == 'o' || *ch == 'O') {
+                                base = 8;
+                                ch++;
+                            } else if (*ch == 'b' || *ch == 'B') {
+                                base = 2;
+                                ch++;
+                            }
+                        } else {
+                            base = 10;
+                        } 
+                    } else {
+                        if (*ch == '0' &&
+                            ((base == 16 && (ch[1] == 'x'|| ch[1] == 'X')) ||
+                            (base == 8  && (ch[1] == 'o' || ch[1] == 'O')) ||
+                            (base == 2  && (ch[1] == 'b' || ch[1] == 'B')))) {
+                            ch += 2;
+                        }  
+                    }
+                    while (*ch) {
+                        if (*ch == '.') {
+                            throw SemanticError("invalid literal for int() with base " + std::to_string(zero_based ? 0: base) + ": '" + std::string(c) + "'", arg->base.loc);
+                        }
+                        if (!((*ch >= '0' && (*ch <= std::min((int)'9', '0' + base - 1))) || (*ch >= 'A' && (*ch < 'A' + base - 10)) || (*ch >= 'a' && (*ch < 'a' + base - 10)))) {
+                            throw SemanticError("invalid literal for int() with base " + std::to_string(zero_based ? 0: base) + ": '" + std::string(c) + "'", arg->base.loc);
+                        }
+                        ch++;
+                    }
+                    ival = std::stoi(c,0,base);
+                    return (ASR::asr_t *)ASR::down_cast<ASR::expr_t>(ASR::make_IntegerConstant_t(al,
+                                    loc, ival, to_type));
+                }
+                return (ASR::asr_t *)ASR::down_cast<ASR::expr_t>(ASR::make_Cast_t(
+                    al, loc, arg, ASR::cast_kindType::CharacterToInteger,
+                    to_type, value));        
+            } else {
+                if (args.size() == 2) {
+                    throw SemanticError("int() can't convert non-string with explicit base", loc);
+                }
+            }
         }
-        ASR::ttype_t *to_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc,
-                                    8, nullptr, 0));
+        ASR::ttype_t *to_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc, 8));
         if (!arg) {
             return ASR::make_IntegerConstant_t(al, loc, 0, to_type);
         }
@@ -71,31 +146,6 @@ struct IntrinsicNodeHandler {
             }
             return (ASR::asr_t *)ASR::down_cast<ASR::expr_t>(ASR::make_Cast_t(
                 al, loc, arg, ASR::cast_kindType::RealToInteger,
-                to_type, value));
-        } else if (ASRUtils::is_character(*type)) {
-            if (ASRUtils::expr_value(arg) != nullptr) {
-                char *c = ASR::down_cast<ASR::StringConstant_t>(
-                                    ASRUtils::expr_value(arg))->m_s;
-                int ival = 0;
-                char *ch = c;
-                if (*ch == '-') {
-                    ch++;
-                }
-                while (*ch) {
-                    if (*ch == '.') {
-                        throw SemanticError("invalid literal for int() with base 10: '"+ std::string(c) + "'", arg->base.loc);
-                    }
-                    if (*ch < '0' || *ch > '9') {
-                        throw SemanticError("invalid literal for int() with base 10: '"+ std::string(c) + "'", arg->base.loc);
-                    }
-                    ch++;
-                }
-                ival = std::stoi(c);
-                return (ASR::asr_t *)ASR::down_cast<ASR::expr_t>(ASR::make_IntegerConstant_t(al,
-                                loc, ival, to_type));
-            }
-            return (ASR::asr_t *)ASR::down_cast<ASR::expr_t>(ASR::make_Cast_t(
-                al, loc, arg, ASR::cast_kindType::CharacterToInteger,
                 to_type, value));
         } else if (ASRUtils::is_logical(*type)) {
             if (ASRUtils::expr_value(arg) != nullptr) {
@@ -110,6 +160,12 @@ struct IntrinsicNodeHandler {
         } else if (ASRUtils::is_integer(*type)) {
             // int() returns a 64-bit integer
             if (ASRUtils::extract_kind_from_ttype_t(type) != 8) {
+                if (ASRUtils::expr_value(arg) != nullptr) {
+                    int64_t ival = ASR::down_cast<ASR::IntegerConstant_t>(
+                                            ASRUtils::expr_value(arg))->m_n;
+                    value =  ASR::down_cast<ASR::expr_t>(make_IntegerConstant_t(al,
+                                    loc, ival, to_type));
+                }
                 return (ASR::asr_t *)ASR::down_cast<ASR::expr_t>(ASR::make_Cast_t(
                     al, loc, arg, ASR::cast_kindType::IntegerToInteger,
                     to_type, value));
@@ -138,8 +194,7 @@ struct IntrinsicNodeHandler {
             arg = args[0].m_value;
             type = ASRUtils::expr_type(arg);
         }
-        ASR::ttype_t *to_type = ASRUtils::TYPE(ASR::make_Real_t(al, loc,
-                                    8, nullptr, 0));
+        ASR::ttype_t *to_type = ASRUtils::TYPE(ASR::make_Real_t(al, loc, 8));
         if (!arg) {
             return ASR::make_RealConstant_t(al, loc, 0.0, to_type);
         }
@@ -193,8 +248,7 @@ struct IntrinsicNodeHandler {
             arg = args[0].m_value;
             type = ASRUtils::expr_type(arg);
         }
-        ASR::ttype_t *to_type = ASRUtils::TYPE(ASR::make_Logical_t(al, loc,
-                                    4, nullptr, 0));
+        ASR::ttype_t *to_type = ASRUtils::TYPE(ASR::make_Logical_t(al, loc, 4));
         if (!arg) {
             return ASR::make_LogicalConstant_t(al, loc, false, to_type);
         }
@@ -241,6 +295,10 @@ struct IntrinsicNodeHandler {
 
         } else if (ASRUtils::is_logical(*type)) {
             return (ASR::asr_t *)arg;
+        } else if (ASR::is_a<ASR::CPtr_t>(*type)) {
+            ASR::expr_t* c_null_ptr = ASRUtils::EXPR(ASR::make_PointerNullConstant_t(
+                    al, loc, ASRUtils::TYPE(ASR::make_CPtr_t(al, loc))));
+            return ASR::make_CPtrCompare_t(al, loc, arg, ASR::cmpopType::NotEq, c_null_ptr, to_type, nullptr);
         } else {
             std::string stype = ASRUtils::type_to_str_python(type);
             throw SemanticError(
@@ -265,11 +323,9 @@ struct IntrinsicNodeHandler {
             arg = args[0].m_value;
             arg_type = ASRUtils::expr_type(arg);
         }
-        ASR::ttype_t *str_type = ASRUtils::TYPE(ASR::make_Character_t(al, loc,
-                                    1, -2, nullptr, nullptr , 0));
+        ASR::ttype_t *str_type = ASRUtils::TYPE(ASR::make_Character_t(al, loc, 1, -2, nullptr));
         if (!arg) {
-            ASR::ttype_t *res_type = ASRUtils::TYPE(ASR::make_Character_t(al, loc,
-                                        1, 0, nullptr, nullptr , 0));
+            ASR::ttype_t *res_type = ASRUtils::TYPE(ASR::make_Character_t(al, loc, 1, 0, nullptr));
             return ASR::make_StringConstant_t(al, loc, s2c(al, ""), res_type);
         }
         if (ASRUtils::is_real(*arg_type)) {
@@ -282,7 +338,7 @@ struct IntrinsicNodeHandler {
                 std::string value_str = sm.str();
                 sm.clear();
                 ASR::ttype_t *res_type = ASRUtils::TYPE(ASR::make_Character_t(al, loc,
-                                            1, value_str.size(), nullptr, nullptr , 0));
+                                            1, value_str.size(), nullptr));
                 res_value =  ASR::down_cast<ASR::expr_t>(ASR::make_StringConstant_t(al,
                                 loc, s2c(al, value_str), res_type));
             }
@@ -294,7 +350,7 @@ struct IntrinsicNodeHandler {
                                         ASRUtils::expr_value(arg))->m_n;
                 std::string value_str = std::to_string(number);
                 ASR::ttype_t *res_type = ASRUtils::TYPE(ASR::make_Character_t(al, loc,
-                                            1, value_str.size(), nullptr, nullptr , 0));
+                                            1, value_str.size(), nullptr));
                 res_value = ASR::down_cast<ASR::expr_t>(ASR::make_StringConstant_t(al,
                                 loc, s2c(al, value_str), res_type));
             }
@@ -306,7 +362,7 @@ struct IntrinsicNodeHandler {
                                         ASRUtils::expr_value(arg))->m_value;
                 std::string value_str = (bool_number)? "True" : "False";
                 ASR::ttype_t *res_type = ASRUtils::TYPE(ASR::make_Character_t(al, loc,
-                                            1, value_str.size(), nullptr, nullptr , 0));
+                                            1, value_str.size(), nullptr));
                 res_value = ASR::down_cast<ASR::expr_t>(ASR::make_StringConstant_t(al,
                                 loc, s2c(al, value_str), res_type));
             }
@@ -329,8 +385,7 @@ struct IntrinsicNodeHandler {
         }
         ASR::expr_t *arg = args[0].m_value;
         ASR::ttype_t *type = ASRUtils::expr_type(arg);
-        ASR::ttype_t *to_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc,
-                                4, nullptr, 0));
+        ASR::ttype_t *to_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc, 4));
         ASR::expr_t *value = nullptr;
         if (ASRUtils::is_character(*type)) {
             if (ASRUtils::expr_value(arg) != nullptr) {
@@ -343,12 +398,10 @@ struct IntrinsicNodeHandler {
             return (ASR::asr_t *)ASR::down_cast<ASR::expr_t>(
                     ASR::make_StringLen_t(al, loc, arg, to_type, value));
         } else if (ASR::is_a<ASR::Set_t>(*type)) {
-            if (ASRUtils::expr_value(arg) != nullptr) {
-                int64_t ival = (int64_t)ASR::down_cast<ASR::SetConstant_t>(
-                                        ASRUtils::expr_value(arg))->n_elements;
-                value = ASR::down_cast<ASR::expr_t>(make_IntegerConstant_t(al,
-                                loc, ival, to_type));
-            }
+            // Skip for set as they can have multiple same values
+            // which shouldn't account for len.
+            // Example: {1, 1, 1, 3} and the length should be 2.
+            // So it should be handled in the backend.
             return (ASR::asr_t *)ASR::down_cast<ASR::expr_t>(
                     ASR::make_SetLen_t(al, loc, arg, to_type, value));
         } else if (ASR::is_a<ASR::Tuple_t>(*type)) {
@@ -365,12 +418,10 @@ struct IntrinsicNodeHandler {
             return (ASR::asr_t *)ASR::down_cast<ASR::expr_t>(
                     ASR::make_ListLen_t(al, loc, arg, to_type, value));
         } else if (ASR::is_a<ASR::Dict_t>(*type)) {
-            if (ASRUtils::expr_value(arg) != nullptr) {
-                int64_t ival = (int64_t)ASR::down_cast<ASR::DictConstant_t>(
-                                        ASRUtils::expr_value(arg))->n_keys;
-                value = ASR::down_cast<ASR::expr_t>(make_IntegerConstant_t(al,
-                                loc, ival, to_type));
-            }
+            // Skip for dictionary as they can have multiple same keys
+            // which shouldn't account for len.
+            // Example: {1: 2, 1: 3, 1: 4} and the length should be 1.
+            // So it should be handled in the backend.
             return (ASR::asr_t *)ASR::down_cast<ASR::expr_t>(
                     ASR::make_DictLen_t(al, loc, arg, to_type, value));
         }
@@ -400,6 +451,15 @@ struct IntrinsicNodeHandler {
         newdim.m_start = nullptr, newdim.m_length = nullptr;
         dims.push_back(al, newdim);
         ASR::ttype_t* empty_type = ASRUtils::duplicate_type(al, ASRUtils::expr_type(array), &dims);
+        ASR::array_physical_typeType array_physical_type = ASRUtils::extract_physical_type(
+                                                                ASRUtils::expr_type(array));
+        if( array_physical_type == ASR::array_physical_typeType::FixedSizeArray ) {
+        empty_type = ASRUtils::duplicate_type(al, ASRUtils::expr_type(array),
+                        &dims, array_physical_type, true);
+        } else {
+        empty_type = ASRUtils::duplicate_type(al, ASRUtils::expr_type(array), &dims);
+        }
+        newshape = ASRUtils::cast_to_descriptor(al, newshape);
         return ASR::make_ArrayReshape_t(al, loc, array, newshape, empty_type, nullptr);
     }
 
@@ -411,8 +471,7 @@ struct IntrinsicNodeHandler {
         }
         ASR::expr_t *arg = args[0].m_value;
         ASR::ttype_t *type = ASRUtils::expr_type(arg);
-        ASR::ttype_t *to_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc,
-                                4, nullptr, 0));
+        ASR::ttype_t *to_type = ASRUtils::TYPE(ASR::make_Integer_t(al, loc, 4));
         ASR::expr_t *value = nullptr;
         if (ASRUtils::is_character(*type)) {
             if (ASRUtils::expr_value(arg) != nullptr) {
@@ -439,19 +498,24 @@ struct IntrinsicNodeHandler {
         ASR::expr_t *arg = args[0].m_value;
         ASR::ttype_t *type = ASRUtils::expr_type(arg);
         ASR::ttype_t* str_type = ASRUtils::TYPE(ASR::make_Character_t(al,
-            loc, 1, 1, nullptr, nullptr, 0));
+            loc, 1, 1, nullptr));
         ASR::expr_t *value = nullptr;
         if (ASRUtils::is_integer(*type)) {
             if (ASRUtils::expr_value(arg) != nullptr) {
                 int64_t c = ASR::down_cast<ASR::IntegerConstant_t>(arg)->m_n;
-                if (! (c >= 0 && c <= 127) ) {
-                    throw SemanticError("The argument 'x' in chr(x) must be in the range 0 <= x <= 127.", loc);
+                c = (uint8_t) c;
+                if (! (c >= 0 && c <= 255) ) {
+                    throw SemanticError("The argument 'x' in chr(x) must be in the range 0 <= x <= 255.", loc);
                 }
-                char cc = c;
                 std::string svalue;
-                svalue += cc;
+                svalue += char(c);
                 value = ASR::down_cast<ASR::expr_t>(
                     ASR::make_StringConstant_t(al, loc, s2c(al, svalue), str_type));
+            }
+            int kind = ASRUtils::extract_kind_from_ttype_t(type);
+            if (kind != 4) {
+                ASR::ttype_t* dest_type = ASRUtils::TYPE(ASR::make_Integer_t(al,loc, 4));
+                arg = ASRUtils::EXPR(ASR::make_Cast_t(al, loc, arg, ASR::cast_kindType::IntegerToInteger, dest_type, nullptr));
             }
             return ASR::make_StringChr_t(al, loc, arg, str_type, value);
         } else {
@@ -462,6 +526,6 @@ struct IntrinsicNodeHandler {
 
 }; // IntrinsicNodeHandler
 
-} // namespace LFortran
+} // namespace LCompilers::LPython
 
 #endif /* LPYTHON_INTRINSIC_EVAL_H */

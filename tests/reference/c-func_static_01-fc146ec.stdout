@@ -6,34 +6,11 @@
 #include <string.h>
 #include <lfortran_intrinsics.h>
 
-#define ASSERT(cond)                                                           \
-    {                                                                          \
-        if (!(cond)) {                                                         \
-            printf("%s%s", "ASSERT failed: ", __FILE__);                       \
-            printf("%s%s", "\nfunction ", __func__);                           \
-            printf("%s%d%s", "(), line number ", __LINE__, " at \n");          \
-            printf("%s%s", #cond, "\n");                                       \
-            exit(1);                                                           \
-        }                                                                      \
-    }
-#define ASSERT_MSG(cond, msg)                                                  \
-    {                                                                          \
-        if (!(cond)) {                                                         \
-            printf("%s%s", "ASSERT failed: ", __FILE__);                       \
-            printf("%s%s", "\nfunction ", __func__);                           \
-            printf("%s%d%s", "(), line number ", __LINE__, " at \n");          \
-            printf("%s%s", #cond, "\n");                                       \
-            printf("%s", "ERROR MESSAGE:\n");                                  \
-            printf("%s%s", msg, "\n");                                         \
-            exit(1);                                                           \
-        }                                                                      \
-    }
+static int64_t fib(int64_t n);
+void main0();
+void __main__global_stmts();
 
 
-struct dimension_descriptor
-{
-    int32_t lower_bound, length;
-};
 
 // Implementations
 static int64_t fib(int64_t n)
@@ -56,13 +33,14 @@ void main0()
     ASSERT(ans == 5);
 }
 
-void _lpython_main_program()
+void __main__global_stmts()
 {
     main0();
 }
 
 int main(int argc, char* argv[])
 {
-    _lpython_main_program();
+    _lpython_set_argv(argc, argv);
+    __main__global_stmts();
     return 0;
 }

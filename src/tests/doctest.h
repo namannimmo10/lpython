@@ -146,7 +146,7 @@
 // =================================================================================================
 
 // both the header and the implementation suppress all of these,
-// so it only makes sense to aggregrate them like so
+// so it only makes sense to aggregate them like so
 #define DOCTEST_SUPPRESS_COMMON_WARNINGS_PUSH                                                      \
     DOCTEST_CLANG_SUPPRESS_WARNING_PUSH                                                            \
     DOCTEST_CLANG_SUPPRESS_WARNING("-Wunknown-pragmas")                                            \
@@ -1880,7 +1880,7 @@ struct QueryData
 
 struct DOCTEST_INTERFACE IReporter
 {
-    // The constructor has to accept "const ContextOptions&" as a single argument
+    // The constructor must accept "const ContextOptions&" as a single argument
     // which has most of the options for the run + a pointer to the stdout stream
     // Reporter(const ContextOptions& in)
 

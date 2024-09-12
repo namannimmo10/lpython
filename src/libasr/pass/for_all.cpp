@@ -3,10 +3,10 @@
 #include <libasr/exception.h>
 #include <libasr/asr_utils.h>
 #include <libasr/asr_verify.h>
-#include <libasr/pass/for_all.h>
+#include <libasr/pass/replace_for_all.h>
 #include <libasr/pass/stmt_walk_visitor.h>
 
-namespace LFortran {
+namespace LCompilers {
 
 /*
  * This ASR pass replaces forall statement with Do Concurrent.
@@ -33,7 +33,7 @@ public:
         body.reserve(al, 1);
         body.push_back(al, assign_stmt);
 
-        ASR::stmt_t *stmt = LFortran::ASRUtils::STMT(
+        ASR::stmt_t *stmt = ASRUtils::STMT(
             ASR::make_DoConcurrentLoop_t(al, loc, x.m_head, body.p, body.size())
         );
         Vec<ASR::stmt_t*> result;
@@ -43,10 +43,10 @@ public:
     }
 };
 
-void pass_replace_forall(Allocator &al, ASR::TranslationUnit_t &unit,
+void pass_replace_for_all(Allocator &al, ASR::TranslationUnit_t &unit,
                          const LCompilers::PassOptions& /*pass_options*/) {
     ForAllVisitor v(al);
     v.visit_TranslationUnit(unit);
 }
 
-} // namespace LFortran
+} // namespace LCompilers

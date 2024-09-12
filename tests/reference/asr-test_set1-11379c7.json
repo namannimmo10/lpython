@@ -2,12 +2,12 @@
     "basename": "asr-test_set1-11379c7",
     "cmd": "lpython --show-asr --no-color {infile} -o {outfile}",
     "infile": "tests/errors/test_set1.py",
-    "infile_hash": "8b09bdc33cffccdb66d9d70f13474d148c5f422ee3892d30fe45eb95",
+    "infile_hash": "54179c34d3818cd0b57d582c930226ce5443a43386ae981aab02e50b",
     "outfile": null,
     "outfile_hash": null,
-    "stdout": null,
-    "stdout_hash": null,
+    "stdout": "asr-test_set1-11379c7.stdout",
+    "stdout_hash": "857687f9f250fb69bc80b8c9645929d6cb586a0397ce964a15fd81d2",
     "stderr": "asr-test_set1-11379c7.stderr",
-    "stderr_hash": "9dcd4fd9b8878cabe6559827531844364da8311d7c8f5f846b38620d",
-    "returncode": 2
+    "stderr_hash": "64dea3d94817d0666cf71481546f7ec61639f47a3b696fe96ae287c6",
+    "returncode": 0
 }

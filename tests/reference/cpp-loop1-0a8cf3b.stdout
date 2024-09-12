@@ -17,13 +17,8 @@ Kokkos::View<T*> from_std_vector(const std::vector<T> &v)
     return r;
 }
 
-
-struct dimension_descriptor
-{
-    int32_t lower_bound, length;
-};
 // Forward declarations
-void _lpython_main_program();
+void __main__global_stmts();
 void main0();
 int32_t test_factorial_1(int32_t x);
 int32_t test_factorial_2(int32_t x);
@@ -32,20 +27,6 @@ namespace {
 }
 
 // Implementations
-void _lpython_main_program()
-{
-    main0();
-}
-
-void main0()
-{
-    int32_t i;
-    int64_t j;
-    i = test_factorial_1(4);
-    i = test_factorial_2(4);
-    j = test_factorial_3(5);
-}
-
 int32_t test_factorial_1(int32_t x)
 {
     int32_t _lpython_return_variable;
@@ -94,10 +75,24 @@ int64_t test_factorial_3(int32_t x)
     return _lpython_return_variable;
 }
 
+void main0()
+{
+    int32_t i;
+    int64_t j;
+    i = test_factorial_1(4);
+    i = test_factorial_2(4);
+    j = test_factorial_3(5);
+}
+
+void __main__global_stmts()
+{
+    main0();
+}
+
 namespace {
 
 void main2() {
-    _lpython_main_program();
+    __main__global_stmts();
 }
 
 }

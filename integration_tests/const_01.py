@@ -1,4 +1,4 @@
-from ltypes import Const, i32, i64, f32, f64
+from lpython import Const, i32, i64, f32, f64
 
 def test_const_variables():
     xci: Const[i32] = i32(0.0)
@@ -12,6 +12,11 @@ def test_const_variables():
 
     ycf: Const[f64] = 3.0
     yf: f64 = 3.0
+
+    print(xci, xi)
+    print(yci, yi)
+    print(xcf, xf)
+    print(ycf, yf)
 
     assert xci == xi
     assert yci == yi

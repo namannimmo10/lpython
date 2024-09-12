@@ -1,4 +1,4 @@
-from ltypes import i32, f64, i64, dataclass, ccall, union, Union
+from lpython import i32, f64, i64, dataclass, ccall, union, Union
 
 @dataclass
 class A:
@@ -19,9 +19,9 @@ class C:
 @ccall
 @union
 class D(Union):
-    a: A
-    b: B
-    c: C
+    a: A = A(0, 3.0)
+    b: B = B(i64(0), 2.0)
+    c: C = C(i64(0), 0.0, 1.0)
 
 def test_struct_union():
     d: D = D()

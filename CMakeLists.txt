@@ -89,6 +89,9 @@ set(WITH_WHEREAMI yes
 set(WITH_ZLIB yes
     CACHE BOOL "Compile with ZLIB Library")
 
+set(WITH_LCOMPILERS_FAST_ALLOC yes
+    CACHE BOOL "Compile with fast allocator")
+
 # Build to wasm
 set(LPYTHON_BUILD_TO_WASM no
     CACHE BOOL "Compile LPython To WASM")
@@ -97,6 +100,7 @@ if (LPYTHON_BUILD_TO_WASM)
     set(HAVE_BUILD_TO_WASM yes)
     SET(WITH_WHEREAMI no)
     SET(WITH_ZLIB no)
+    SET(WITH_LCOMPILERS_FAST_ALLOC no)
     add_definitions("-DHAVE_BUILD_TO_WASM=1")
 endif()
 
@@ -111,6 +115,25 @@ if (WITH_ZLIB)
     # might search for ZLIB again and find the shared libraries instead of the static ones
     find_package(StaticZLIB REQUIRED)
 endif()
+
+if (WITH_LCOMPILERS_FAST_ALLOC)
+    add_definitions("-DLCOMPILERS_FAST_ALLOC=1")
+endif()
+
+# copy runtime files
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/lpython/lpython.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/lpython/lpython.py")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/cmath.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/cmath.py")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/lpython_builtin.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/lpython_builtin.py")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/lpython_intrinsic_numpy.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/lpython_intrinsic_numpy.py")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/lpython_parser.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/lpython_parser.py")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/math.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/math.py")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/os.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/os.py")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/platform.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/platform.py")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/random.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/random.py")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/statistics.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/statistics.py")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/string.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/string.py")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/sys.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/sys.py")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/runtime/time.py" "${CMAKE_CURRENT_BINARY_DIR}/src/runtime/time.py")
 
 # LLVM
 set(WITH_LLVM no CACHE BOOL "Build with LLVM support")
@@ -149,7 +172,17 @@ if (WITH_LLVM)
         add_definitions("-DHAVE_TARGET_X86=1")
     endif()
 
-    llvm_map_components_to_libnames(llvm_libs ${LPYTHON_LLVM_COMPONENTS})
+    if (TARGET LLVMCore)
+        # If `LLVMCore` target is present, then LLVM is distributed as separate
+        # libraries and llvm_map_components_to_libnames() should work:
+        llvm_map_components_to_libnames(llvm_libs ${LPYTHON_LLVM_COMPONENTS})
+    else()
+        # Workaround for https://github.com/llvm/llvm-project/issues/34593
+        # If LLVM is distributed as a single library (the LLVMCore target is
+        # missing), we set `llvm_libs` to "LLVM" which links against the single
+        # `libLLVM.so` shared library.
+        set(llvm_libs "LLVM")
+    endif()
     unset(LPYTHON_LLVM_COMPONENTS)
 
     add_library(p::llvm INTERFACE IMPORTED)
@@ -176,13 +209,14 @@ endif()
 # XEUS (Fortran kernel)
 set(WITH_XEUS no CACHE BOOL "Build with XEUS support")
 if (WITH_XEUS)
-    find_package(xeus 0.24.1 REQUIRED)
+    find_package(xeus 5.1.0 REQUIRED)
+    find_package(xeus-zmq 3.0.0 REQUIRED)
     set(HAVE_LFORTRAN_XEUS yes)
 
     # Generate kernel.json with correct paths
     configure_file (
-        "${CMAKE_CURRENT_SOURCE_DIR}/share/jupyter/kernels/fortran/kernel.json.in"
-        "${CMAKE_CURRENT_BINARY_DIR}/share/jupyter/kernels/fortran/kernel.json"
+        "${CMAKE_CURRENT_SOURCE_DIR}/share/jupyter/kernels/lpython/kernel.json.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/share/jupyter/kernels/lpython/kernel.json"
     )
 
     # Configuration and data directories for Jupyter and LFortran
@@ -243,6 +277,15 @@ if (WITH_STACKTRACE)
     endif()
     set(HAVE_LFORTRAN_STACKTRACE yes)
 endif()
+if (WITH_RUNTIME_STACKTRACE)
+    set(WITH_UNWIND yes)
+    if (APPLE)
+        set(WITH_MACHO yes)
+    else()
+        set(WITH_LINKH yes)
+    endif()
+    set(HAVE_RUNTIME_STACKTRACE yes)
+endif()
 if (WITH_BFD)
     find_package(BFD REQUIRED)
     set(HAVE_LFORTRAN_BFD yes)
@@ -284,6 +327,7 @@ message("WITH_LFORTRAN_ASSERT: ${WITH_LFORTRAN_ASSERT}")
 message("LPYTHON_STATIC_BIN: ${LPYTHON_STATIC_BIN}")
 message("LPYTHON_BUILD_TO_WASM: ${LPYTHON_BUILD_TO_WASM}")
 message("WITH_STACKTRACE: ${WITH_STACKTRACE}")
+message("WITH_RUNTIME_STACKTRACE: ${WITH_RUNTIME_STACKTRACE}")
 message("WITH_UNWIND: ${WITH_UNWIND}")
 message("WITH_BFD: ${WITH_BFD}")
 message("WITH_DWARFDUMP: ${WITH_DWARFDUMP}")

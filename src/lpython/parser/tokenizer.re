@@ -5,8 +5,7 @@
 #include <lpython/parser/parser.tab.hh>
 #include <libasr/bigint.h>
 
-namespace LFortran
-{
+namespace LCompilers::LPython {
 
 template<int base>
 bool adddgt(uint64_t &u, uint64_t d)
@@ -90,13 +89,17 @@ void lex_int(Allocator &al, const unsigned char *s,
         s = s + 2;
         uint64_t n = get_value((char*)s, 2, loc);
         u.from_smallint(n);
-    } else if ((std::tolower(s[1]) == 'o')) {
+    } else if (std::tolower(s[1]) == 'o') {
         // Oct
         s = s + 2;
         uint64_t n = get_value((char*)s, 8, loc);
         u.from_smallint(n);
     } else {
         lex_dec_int_large(al, s, e, u);
+        if (s[0] == '0' && u.n != 0) {            
+            throw parser_local::TokenizerError(
+                "Leading zeros in decimal integer are not allowed", {loc});
+        }
     }
     return;
 }
@@ -127,7 +130,7 @@ void Tokenizer::set_string(const std::string &str, uint32_t prev_loc_)
     // The input string must be NULL terminated, otherwise the tokenizer will
     // not detect the end of string. After C++11, the std::string is guaranteed
     // to end with \0, but we check this here just in case.
-    LFORTRAN_ASSERT(str[str.size()] == '\0');
+    LCOMPILERS_ASSERT(str[str.size()] == '\0');
     cur = (unsigned char *)(&str[0]);
     string_start = cur;
     prev_loc = prev_loc_;
@@ -265,8 +268,8 @@ int Tokenizer::lex(Allocator &al, YYSTYPE &yylval, Location &loc, diag::Diagnost
             re2c:define:YYCTYPE = "unsigned char";
 
             end = "\x00";
-            whitespace = [ \t\v\r]+;
-            newline = "\n";
+            whitespace = [ \t\v]+;
+            newline = "\n" | "\r\n";
             digit = [0-9];
             int_oct = "0"[oO]([0-7] | "_" [0-7])+;
             int_bin = "0"[bB]([01] | "_" [01])+;
@@ -431,6 +434,19 @@ int Tokenizer::lex(Allocator &al, YYSTYPE &yylval, Location &loc, diag::Diagnost
                         RET(TK_NAME);
                     }
                 } else {
+                    token(yylval.string);
+                    RET(TK_NAME);
+                }
+            }
+
+            [rR][bB] | [bB][rR]
+            | [fF][rR] | [rR][fF]
+            | [rR] | [bB] | [fF] | [uU]
+             {
+                if(cur[0] == '\'' || cur[0] == '"'){
+                    KW(STR_PREFIX);
+                }
+                else {
                     token(yylval.string);
                     RET(TK_NAME);
                 }
@@ -608,14 +624,14 @@ void Tokenizer::lex_match_or_case(Location &loc, unsigned char *cur,
             * {
                 token_loc(loc);
                 std::string t = std::string((char *)tok, cur - tok);
-                throw LFortran::parser_local::TokenizerError("Token '" + t
-                    + "' is not recognized in `match` statement", loc);
+                throw parser_local::TokenizerError("Token '"
+                    + t + "' is not recognized in `match` statement", loc);
             }
 
             end {
                 token_loc(loc);
                 std::string t = std::string((char *)tok, cur - tok);
-                throw LFortran::parser_local::TokenizerError(
+                throw parser_local::TokenizerError(
                     "End of file not expected within `match` statement: '" + t
                     + "'", loc);
             }
@@ -764,6 +780,7 @@ std::string token2text(const int token)
 
         T(KW_MATCH, "match")
         T(KW_CASE, "case")
+        T(KW_STR_PREFIX, "string prefix")
 
         default : {
             std::cout << "TOKEN: " << token << std::endl;
@@ -797,7 +814,7 @@ Result<std::vector<int>> tokens(Allocator &al, const std::string &input,
     return tst;
 }
 
-std::string pickle_token(int token, const LFortran::YYSTYPE &yystype)
+std::string pickle_token(int token, const YYSTYPE &yystype)
 {
     std::string t;
     t += "(";
@@ -826,7 +843,7 @@ std::string pickle_token(int token, const LFortran::YYSTYPE &yystype)
     } else if (token == yytokentype::TK_IMAG_NUM) {
         t += " " + std::to_string(yystype.f) + "j";
     } else if (token == yytokentype::TK_STRING) {
-        t = t + " " + "\"" + yystype.string.str() + "\"";
+        t = t + " " + "\"" + str_escape_c(yystype.string.str()) + "\"";
     } else if (token == yytokentype::TK_TYPE_COMMENT) {
         t = t + " " + "\"" + yystype.string.str() + "\"";
     } else if (token == yytokentype::TK_TYPE_IGNORE) {
@@ -837,4 +854,4 @@ std::string pickle_token(int token, const LFortran::YYSTYPE &yystype)
 }
 
 
-} // namespace LFortran
+} // namespace LCompilers::LPython

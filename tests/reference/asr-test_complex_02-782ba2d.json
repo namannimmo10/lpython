@@ -1,0 +1,13 @@
+{
+    "basename": "asr-test_complex_02-782ba2d",
+    "cmd": "lpython --show-asr --no-color {infile} -o {outfile}",
+    "infile": "tests/../integration_tests/test_complex_02.py",
+    "infile_hash": "e6ee66d952deccec11d316a09f1d5b4bb4916ceb56a41a11dee03ae9",
+    "outfile": null,
+    "outfile_hash": null,
+    "stdout": "asr-test_complex_02-782ba2d.stdout",
+    "stdout_hash": "f41d0ff96de8e204727c2fc135812d0262063d6cb6ab903c89172c8f",
+    "stderr": null,
+    "stderr_hash": null,
+    "returncode": 0
+}

@@ -1,7 +1,4 @@
-from ltypes import i32, i64, f64, f32, ccall, vectorize, overload
-
-pi_64: f64 = f64(3.141592653589793238462643383279502884197)
-pi_32: f32 = f32(3.141592653589793238462643383279502884197)
+from lpython import i32, i64, f64, f32, ccall, vectorize, overload
 
 ########## sin ##########
 
@@ -274,11 +271,13 @@ def arctan(x: f32) -> f32:
 @overload
 @vectorize
 def degrees(x: f64) -> f64:
+    pi_64: Const[f64] = f64(3.141592653589793238462643383279502884197)
     return x*180.0/pi_64
 
 @overload
 @vectorize
 def degrees(x: f32) -> f32:
+    pi_32: Const[f32] = f32(3.141592653589793238462643383279502884197)
     return x*f32(f32(180)/pi_32)
 
 ########## radians ##########
@@ -286,11 +285,13 @@ def degrees(x: f32) -> f32:
 @overload
 @vectorize
 def radians(x: f64) -> f64:
+    pi_64: Const[f64] = f64(3.141592653589793238462643383279502884197)
     return x*pi_64/180.0
 
 @overload
 @vectorize
 def radians(x: f32) -> f32:
+    pi_32: Const[f32] = f32(3.141592653589793238462643383279502884197)
     return x*f32(pi_32/f32(180))
 
 ########## arcsinh ##########
@@ -409,3 +410,56 @@ def ceil(x: f32) -> f32:
     if x <= f32(0) or x == resultf:
         return resultf
     return resultf + f32(1)
+
+########## hypot ##########
+
+
+@overload
+@vectorize
+def hypot(x: f64, y: f64) -> f64:
+    return sqrt(f64(1.0)*f64(x**f64(2) + y**f64(2)))
+
+@overload
+@vectorize
+def hypot(x: f32, y: f32) -> f32:
+    return sqrt(f32(1)*(x**f32(2) + y**f32(2)))
+
+########## trunc ##########
+
+@ccall
+def _lfortran_dtrunc(x: f64) -> f64:
+    pass
+
+@overload
+@vectorize
+def trunc(x: f64) -> f64:
+    return _lfortran_dtrunc(x)
+
+@ccall
+def _lfortran_strunc(x: f32) -> f32:
+    pass
+
+@overload
+@vectorize
+def trunc(x: f32) -> f32:
+    return _lfortran_strunc(x)
+
+########## fix ##########
+
+@ccall
+def _lfortran_dfix(x: f64) -> f64:
+    pass
+
+@overload
+@vectorize
+def fix(x: f64) -> f64:
+    return _lfortran_dfix(x)
+
+@ccall
+def _lfortran_sfix(x: f32) -> f32:
+    pass
+
+@overload
+@vectorize
+def fix(x: f32) -> f32:
+    return _lfortran_sfix(x)

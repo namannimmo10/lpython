@@ -1,0 +1,13 @@
+{
+    "basename": "run_dbg-test_quit_01-30889cc",
+    "cmd": "lpython {infile} -g --debug-with-line-column --no-color",
+    "infile": "tests/runtime_errors/test_quit_01.py",
+    "infile_hash": "d2c544c21b4973dde53993e0a26bae6fac9581e7d5c87dd2cfc93f07",
+    "outfile": null,
+    "outfile_hash": null,
+    "stdout": null,
+    "stdout_hash": null,
+    "stderr": "run_dbg-test_quit_01-30889cc.stderr",
+    "stderr_hash": "56a8b2a9b2ee213cbfab4c18870ed93ddbfaa37e421f171155d06d4f",
+    "returncode": 10
+}

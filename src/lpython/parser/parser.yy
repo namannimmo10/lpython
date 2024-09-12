@@ -1,7 +1,7 @@
 %require "3.0"
 %define api.pure
-%define api.value.type {LFortran::YYSTYPE}
-%param {LFortran::Parser &p}
+%define api.value.type {LCompilers::LPython::YYSTYPE}
+%param {LCompilers::LPython::Parser &p}
 %locations
 %expect    0   // shift/reduce conflicts
 
@@ -31,12 +31,13 @@
 #include <lpython/parser/tokenizer.h>
 #include <lpython/parser/semantics.h>
 
-int yylex(LFortran::YYSTYPE *yylval, YYLTYPE *yyloc, LFortran::Parser &p)
+int yylex(LCompilers::LPython::YYSTYPE *yylval, YYLTYPE *yyloc,
+    LCompilers::LPython::Parser &p)
 {
     return p.m_tokenizer.lex(p.m_a, *yylval, *yyloc, p.diag);
 } // ylex
 
-void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
+void yyerror(YYLTYPE *yyloc, LCompilers::LPython::Parser &p, const std::string &msg)
 {
     p.handle_yyerror(*yyloc, msg);
 }
@@ -177,6 +178,9 @@ void yyerror(YYLTYPE *yyloc, LFortran::Parser &p, const std::string &msg)
 // Soft Keywords
 %token KW_MATCH
 %token KW_CASE
+
+%token KW_STR_PREFIX
+%type <string> KW_STR_PREFIX
 
 // Nonterminal tokens
 
@@ -489,7 +493,7 @@ augassign_op
 
 ann_assignment_statement
     : expr ":" expr { $$ = ANNASSIGN_01($1, $3, @$); }
-    | expr ":" expr "=" expr { $$ = ANNASSIGN_02($1, $3, $5, @$); }
+    | expr ":" expr "=" tuple_list { $$ = ANNASSIGN_02($1, $3, $5, @$); }
     ;
 
 delete_statement
@@ -1101,9 +1105,9 @@ subscript
 
 string
     : string TK_STRING { $$ = STRING2($1, $2, @$); } // TODO
-    | string id TK_STRING { $$ = STRING4($1, STRING3($2, $3, @$), @$); }
+    | string KW_STR_PREFIX TK_STRING { $$ = STRING4($1, STRING3($2, $3, @$), @$); }
     | TK_STRING { $$ = STRING1($1, @$); }
-    | id TK_STRING { $$ = STRING3($1, $2, @$); }
+    | KW_STR_PREFIX TK_STRING { $$ = STRING3($1, $2, @$); }
     ;
 
 lambda_parameter
@@ -1224,8 +1228,9 @@ expr
     | expr ">=" expr { $$ = COMPARE($1, GtE, $3, @$); }
     | expr "is" expr { $$ = COMPARE($1, Is, $3, @$); }
     | expr "is not" expr { $$ = COMPARE($1, IsNot, $3, @$); }
-    | expr "in" expr { $$ = COMPARE($1, In, $3, @$); }
-    | expr "not in" expr { $$ = COMPARE($1, NotIn, $3, @$); }
+
+    | expr "in" expr { $$ = MEMBERSHIP($1, In, $3, @$); }
+    | expr "not in" expr { $$ = MEMBERSHIP($1, NotIn, $3, @$); }
 
     | expr "and" expr { $$ = BOOLOP($1, And, $3, @$); }
     | expr "or" expr { $$ = BOOLOP($1, Or, $3, @$); }

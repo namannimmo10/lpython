@@ -1,4 +1,4 @@
-from ltypes import f64, i32
+from lpython import f64, i32
 
 def fill_list_i32(size: i32) -> list[i32]:
     aarg: list[i32] = [0, 1, 2, 3, 4]
@@ -63,9 +63,21 @@ def test_list_03():
     for i in range(size):
         assert x[i] == x[((i-len(x)) + size) % size]
 
+
+def test_issue_1681():
+    a: list[i32] = [2, 3, 4]
+    a = [1, 2, 3]
+    assert len(a) == 3 and a[0] == 1 and a[1] == 2 and a[2] == 3
+    a = []
+    assert len(a) == 0
+    a = [1]
+    assert len(a) == 1 and a[0] == 1
+
+
 def tests():
     test_list_01()
     test_list_02()
     test_list_03()
+    test_issue_1681()
 
 tests()

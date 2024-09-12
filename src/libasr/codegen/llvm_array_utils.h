@@ -15,7 +15,10 @@
 #include <libasr/asr.h>
 #include <libasr/codegen/llvm_utils.h>
 
-namespace LFortran {
+namespace LCompilers {
+
+    // Forward declared
+    class ASRToLLVMVisitor;
 
     namespace LLVMArrUtils {
 
@@ -71,7 +74,9 @@ namespace LFortran {
                     llvm::LLVMContext& context,
                     llvm::IRBuilder<>* builder,
                     LLVMUtils* llvm_utils,
-                    DESCR_TYPE descr_type);
+                    DESCR_TYPE descr_type,
+                    CompilerOptions& co_,
+                    std::vector<llvm::Value*>& heap_arrays_);
 
                 /*
                 * Checks whether the given ASR::ttype_t* is an
@@ -116,17 +121,6 @@ namespace LFortran {
                     bool get_pointer=false) = 0;
 
                 /*
-                * Same as get_array_type but for allocatable
-                * arrays. It doesn't require dimensions for
-                * creating array llvm::Type*.
-                */
-                virtual
-                llvm::Type* get_malloc_array_type(
-                    ASR::ttype_t* m_type_,
-                    llvm::Type* el_type,
-                    bool get_pointer=false) = 0;
-
-                /*
                 * Creates an array of dimension descriptors
                 * whose each element describes structure
                 * of a dimension's information.
@@ -141,7 +135,13 @@ namespace LFortran {
                 virtual
                 void fill_array_details(
                     llvm::Value* arr, llvm::Type* llvm_data_type, int n_dims,
-                    std::vector<std::pair<llvm::Value*, llvm::Value*>>& llvm_dims) = 0;
+                    std::vector<std::pair<llvm::Value*, llvm::Value*>>& llvm_dims,
+                    llvm::Module* module, bool reserve_data_memory=true) = 0;
+
+                virtual
+                void fill_array_details(
+                    llvm::Value* source, llvm::Value* destination,
+                    ASR::ttype_t* asr_shape_type, bool ignore_data) = 0;
 
                 /*
                 * Fills the elements of the input array descriptor
@@ -151,11 +151,29 @@ namespace LFortran {
                 void fill_malloc_array_details(
                     llvm::Value* arr, llvm::Type* llvm_data_type, int n_dims,
                     std::vector<std::pair<llvm::Value*, llvm::Value*>>& llvm_dims,
-                    llvm::Module* module) = 0;
+                    llvm::Module* module, bool realloc=false) = 0;
 
                 virtual
                 void fill_dimension_descriptor(
                     llvm::Value* arr, int n_dims) = 0;
+
+                virtual
+                void reset_array_details(
+                    llvm::Value* arr, llvm::Value* source_arr, int n_dims) = 0;
+
+                virtual
+                void fill_descriptor_for_array_section(
+                    llvm::Value* value_desc, llvm::Value* target,
+                    llvm::Value** lbs, llvm::Value** ubs,
+                    llvm::Value** ds, llvm::Value** non_sliced_indices,
+                    int value_rank, int target_rank) = 0;
+
+                virtual
+                void fill_descriptor_for_array_section_data_only(
+                    llvm::Value* value_desc, llvm::Value* target,
+                    llvm::Value** lbs, llvm::Value** ubs,
+                    llvm::Value** ds, llvm::Value** non_sliced_indices,
+                    llvm::Value** llvm_diminfo, int value_rank, int target_rank) = 0;
 
                 /*
                 * Returns the llvm::Type* associated with the
@@ -178,7 +196,7 @@ namespace LFortran {
                 * implemented by current class).
                 */
                 virtual
-                llvm::Value* get_offset(llvm::Value* dim_des) = 0;
+                llvm::Value* get_offset(llvm::Value* dim_des, bool load=true) = 0;
 
                 /*
                 * Returns lower bound in the input
@@ -202,7 +220,7 @@ namespace LFortran {
                 * implemented by current class.
                 */
                 virtual
-                llvm::Value* get_stride(llvm::Value* dim_des) = 0;
+                llvm::Value* get_stride(llvm::Value* dim_des, bool load=true) = 0;
 
                 /*
                 * Returns dimension size in the input
@@ -212,6 +230,10 @@ namespace LFortran {
                 virtual
                 llvm::Value* get_dimension_size(llvm::Value* dim_des_arr,
                     llvm::Value* dim, bool load=true) = 0;
+
+                virtual
+                llvm::Value* get_dimension_size(llvm::Value* dim_des,
+                    bool load=true) = 0;
 
                 virtual
                 llvm::Value* get_rank(llvm::Value* arr, bool get_pointer=false) = 0;
@@ -244,13 +266,16 @@ namespace LFortran {
                 virtual
                 llvm::Value* get_single_element(llvm::Value* array,
                     std::vector<llvm::Value*>& m_args, int n_args,
-                    bool data_only=false, llvm::Value** llvm_diminfo=nullptr) = 0;
+                    bool data_only=false, bool is_fixed_size=false,
+                    llvm::Value** llvm_diminfo=nullptr,
+                    bool polymorphic=false, llvm::Type* polymorphic_type=nullptr, bool is_unbounded_pointer_to_data = false) = 0;
 
                 virtual
-                llvm::Value* get_is_allocated_flag(llvm::Value* array) = 0;
+                llvm::Value* get_is_allocated_flag(llvm::Value* array, llvm::Type* llvm_data_type) = 0;
 
                 virtual
-                void set_is_allocated_flag(llvm::Value* array, uint64_t status) = 0;
+                void reset_is_allocated_flag(llvm::Value* array, llvm::Type* llvm_data_type) = 0;
+
 
                 virtual
                 llvm::Value* reshape(llvm::Value* array, llvm::Type* llvm_data_type,
@@ -264,7 +289,7 @@ namespace LFortran {
 
                 virtual
                 void copy_array_data_only(llvm::Value* src, llvm::Value* dest,
-                                          llvm::Module* module, ASR::ttype_t* asr_data_type,
+                                          llvm::Module* module, llvm::Type* llvm_data_type,
                                           llvm::Value* num_elements) = 0;
 
                 virtual
@@ -285,19 +310,23 @@ namespace LFortran {
 
                 std::map<std::string, std::pair<llvm::StructType*, llvm::Type*>> tkr2array;
 
+                CompilerOptions& co;
+                std::vector<llvm::Value*>& heap_arrays;
+
                 llvm::Value* cmo_convertor_single_element(
                     llvm::Value* arr, std::vector<llvm::Value*>& m_args,
                     int n_args, bool check_for_bounds);
 
                 llvm::Value* cmo_convertor_single_element_data_only(
                     llvm::Value** llvm_diminfo, std::vector<llvm::Value*>& m_args,
-                    int n_args, bool check_for_bounds);
+                    int n_args, bool check_for_bounds, bool is_unbounded_pointer_to_data = false);
 
             public:
 
                 SimpleCMODescriptor(llvm::LLVMContext& _context,
                     llvm::IRBuilder<>* _builder,
-                    LLVMUtils* _llvm_utils);
+                    LLVMUtils* _llvm_utils, CompilerOptions& co_,
+                    std::vector<llvm::Value*>& heap_arrays);
 
                 virtual
                 bool is_array(ASR::ttype_t* asr_type);
@@ -322,28 +351,46 @@ namespace LFortran {
                     bool get_pointer=false);
 
                 virtual
-                llvm::Type* get_malloc_array_type(
-                    ASR::ttype_t* m_type_,
-                    llvm::Type* el_type,
-                    bool get_pointer=false);
-
-                virtual
                 llvm::Type* create_dimension_descriptor_array_type();
 
                 virtual
                 void fill_array_details(
                     llvm::Value* arr, llvm::Type* llvm_data_type, int n_dims,
-                    std::vector<std::pair<llvm::Value*, llvm::Value*>>& llvm_dims);
+                    std::vector<std::pair<llvm::Value*, llvm::Value*>>& llvm_dims,
+                    llvm::Module* module, bool reserve_data_memory=true);
+
+                virtual
+                void fill_array_details(
+                    llvm::Value* source, llvm::Value* destination,
+                    ASR::ttype_t* asr_shape_type, bool ignore_data);
 
                 virtual
                 void fill_malloc_array_details(
                     llvm::Value* arr, llvm::Type* llvm_data_type, int n_dims,
                     std::vector<std::pair<llvm::Value*, llvm::Value*>>& llvm_dims,
-                    llvm::Module* module);
+                    llvm::Module* module, bool realloc=false);
 
                 virtual
                 void fill_dimension_descriptor(
                     llvm::Value* arr, int n_dims);
+
+                virtual
+                void reset_array_details(
+                    llvm::Value* arr, llvm::Value* source_arr, int n_dims);
+
+                virtual
+                void fill_descriptor_for_array_section(
+                    llvm::Value* value_desc, llvm::Value* target,
+                    llvm::Value** lbs, llvm::Value** ubs,
+                    llvm::Value** ds, llvm::Value** non_sliced_indices,
+                    int value_rank, int target_rank);
+
+                virtual
+                void fill_descriptor_for_array_section_data_only(
+                    llvm::Value* value_desc, llvm::Value* target,
+                    llvm::Value** lbs, llvm::Value** ubs,
+                    llvm::Value** ds, llvm::Value** non_sliced_indices,
+                    llvm::Value** llvm_diminfo, int value_rank, int target_rank);
 
                 virtual
                 llvm::Type* get_dimension_descriptor_type(bool get_pointer=false);
@@ -358,7 +405,7 @@ namespace LFortran {
                 void set_rank(llvm::Value* arr, llvm::Value* rank);
 
                 virtual
-                llvm::Value* get_offset(llvm::Value* dim_des);
+                llvm::Value* get_offset(llvm::Value* dim_des, bool load=true);
 
                 virtual
                 llvm::Value* get_lower_bound(llvm::Value* dim_des, bool load=true);
@@ -371,6 +418,10 @@ namespace LFortran {
                     llvm::Value* dim, bool load=true);
 
                 virtual
+                llvm::Value* get_dimension_size(llvm::Value* dim_des,
+                    bool load=true);
+
+                virtual
                 llvm::Value* get_pointer_to_dimension_descriptor_array(llvm::Value* arr, bool load=true);
 
                 virtual
@@ -378,18 +429,20 @@ namespace LFortran {
                     llvm::Value* dim);
 
                 virtual
-                llvm::Value* get_stride(llvm::Value* dim_des);
+                llvm::Value* get_stride(llvm::Value* dim_des, bool load=true);
 
                 virtual
                 llvm::Value* get_single_element(llvm::Value* array,
                     std::vector<llvm::Value*>& m_args, int n_args,
-                    bool data_only=false, llvm::Value** llvm_diminfo=nullptr);
+                    bool data_only=false, bool is_fixed_size=false,
+                    llvm::Value** llvm_diminfo=nullptr,
+                    bool polymorphic=false, llvm::Type* polymorphic_type=nullptr, bool is_unbounded_pointer_to_data = false);
 
                 virtual
-                llvm::Value* get_is_allocated_flag(llvm::Value* array);
+                llvm::Value* get_is_allocated_flag(llvm::Value* array, llvm::Type* llvm_data_type);
 
                 virtual
-                void set_is_allocated_flag(llvm::Value* array, uint64_t status);
+                void reset_is_allocated_flag(llvm::Value* array, llvm::Type* llvm_data_type);
 
                 virtual
                 llvm::Value* reshape(llvm::Value* array, llvm::Type* llvm_data_type,
@@ -403,7 +456,7 @@ namespace LFortran {
 
                 virtual
                 void copy_array_data_only(llvm::Value* src, llvm::Value* dest,
-                                          llvm::Module* module, ASR::ttype_t* asr_data_type,
+                                          llvm::Module* module, llvm::Type* llvm_data_type,
                                           llvm::Value* num_elements);
 
                 virtual
@@ -414,6 +467,6 @@ namespace LFortran {
 
     } // LLVMArrUtils
 
-} // LFortran
+} // namespace LCompilers
 
 #endif // LFORTRAN_LLVM_ARR_UTILS_H

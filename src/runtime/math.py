@@ -1,12 +1,10 @@
-from ltypes import i8, i16, i32, f32, i64, f64, ccall, overload
+from lpython import i8, i16, i32, f32, i64, f64, ccall, overload
 
 
 pi: f64 = 3.141592653589793238462643383279502884197
 e: f64 = 2.718281828459045235360287471352662497757
 tau: f64 = 6.283185307179586
 
-# TODO: Change floor used inside functions implemented here to
-# floordiv operator (//) once the multiple import issue is fixed
 
 @overload
 def modf(x: f64) -> tuple[f64, f64]:
@@ -102,7 +100,7 @@ def ceil(x: f32) -> i32:
 @overload
 def fsum(arr: list[i32]) -> f64:
     """
-    Sum of the elements of `arr`.
+    Floating-point sum of the elements of `arr`.
     """
     sum: f64
     sum = 0.0
@@ -115,7 +113,7 @@ def fsum(arr: list[i32]) -> f64:
 @overload
 def fsum(arr: list[i64]) -> f64:
     """
-    Sum of the elements of `arr`.
+    Floating-point sum of the elements of `arr`.
     """
     sum: f64
     sum = 0.0
@@ -128,7 +126,7 @@ def fsum(arr: list[i64]) -> f64:
 @overload
 def fsum(arr: list[f32]) -> f64:
     """
-    Sum of the elements of `arr`.
+    Floating-point sum of the elements of `arr`.
     """
     sum: f64
     sum = 0.0
@@ -141,7 +139,7 @@ def fsum(arr: list[f32]) -> f64:
 @overload
 def fsum(arr: list[f64]) -> f64:
     """
-    Sum of the elements of `arr`.
+    Floating-point sum of the elements of `arr`.
     """
     sum: f64
     sum = 0.0
@@ -230,7 +228,7 @@ def comb(n: i32, k: i32) -> i32:
 
     if n < k or n < 0:
         return 0
-    return i32(floor(factorial(n)/(factorial(k)*factorial(n-k))))
+    return i32(factorial(n)//(factorial(k)*factorial(n-k)))
 
 
 def perm(n: i32, k: i32) -> i32:
@@ -241,7 +239,7 @@ def perm(n: i32, k: i32) -> i32:
 
     if n < k or n < 0:
         return 0
-    return i32(floor(factorial(n)/factorial(n-k)))
+    return i32(factorial(n)//factorial(n-k))
 
 
 def isqrt(n: i32) -> i32:
@@ -256,7 +254,7 @@ def isqrt(n: i32) -> i32:
     low = 0
     high = n+1
     while low + 1 < high:
-        mid = i32(floor((low + high)/2))
+        mid = i32((low + high)//2)
         if mid*mid <= n:
             low = mid
         else:
@@ -459,18 +457,12 @@ def ldexp(x: f64, i: i32) -> f64:
     return result
 
 
-def exp(x: f64) -> f64:
-    """
-    Return `e` raised to the power `x`.
-    """
-    return e**x
-
 
 def mod(a: i32, b: i32) -> i32:
     """
     Returns a%b
     """
-    return a - i32(floor(a/b))*b
+    return a - i32(a//b)*b
 
 
 def gcd(a: i32, b: i32) -> i32:
@@ -478,29 +470,37 @@ def gcd(a: i32, b: i32) -> i32:
     Returns greatest common divisor of `a` and `b`
     """
     temp: i32
-    if a < 0:
-        a = -a
-    if b < 0:
-        b = -b
-    while b != 0:
-        a = mod(a, b)
-        temp = a
-        a = b
-        b = temp
-    return a
+    a_: i32
+    b_: i32
+    a_ = a
+    b_ = b
+    if a_ < 0:
+        a_ = -a_
+    if b_ < 0:
+        b_ = -b_
+    while b_ != 0:
+        a_ = mod(a_, b_)
+        temp = a_
+        a_ = b_
+        b_ = temp
+    return a_
 
 
 def lcm(a: i32, b: i32) -> i32:
     """
     Returns least common multiple of `a` and `b`
     """
-    if a < 0:
-        a = -a
-    if b < 0:
-        b = -b
-    if a*b == 0:
+    a_: i32
+    b_: i32
+    a_ = a
+    b_ = b
+    if a_ < 0:
+        a_ = -a_
+    if b_ < 0:
+        b_ = -b_
+    if a_*b_ == 0:
         return 0
-    return i32(floor((a*b)/gcd(a, b)))
+    return i32((a_*b_)//gcd(a_, b_))
 
 
 def copysign(x: f64, y: f64) -> f64:
@@ -540,7 +540,16 @@ def trunc(x: f32) -> i32:
         return ceil(x)
 
 def sqrt(x: f64) -> f64:
+    """
+    Returns square root of a number x
+    """
     return x**(1/2)
+
+def cbrt(x: f64) -> f64:
+    """
+    Returns cube root of a number x
+    """
+    return x**(1/3)
 
 @ccall
 def _lfortran_dsin(x: f64) -> f64:
@@ -679,10 +688,6 @@ def atanh(x: f64) -> f64:
     return _lfortran_datanh(x)
 
 
-def expm1(x: f64) -> f64:
-    return exp(x) - 1.0
-
-
 def log1p(x: f64) -> f64:
     return log(1.0 + x)
 
@@ -704,3 +709,39 @@ def remainder(x: f64, y: f64) -> f64:
     if x - y*f64(q) > y*f64(q + i64(1)) - x:
         return x - y*f64(q + i64(1))
     return x - y*f64(q)
+
+
+@overload
+def frexp(x:f64) -> tuple[f64,i16]:
+    '''
+    Return the mantissa and exponent of x as the pair (m, e).
+    m is a float and e is an integer such that x == m * 2**e exactly.
+    '''
+    exponent: i16 = i16(0)
+    while f64(fabs(x)) > f64(1.0):
+        exponent += i16(1)
+        x /= 2.0
+    return x, exponent
+
+
+@overload
+def frexp(x:f32) -> tuple[f32,i8]:
+    '''
+    Return the mantissa and exponent of x as the pair (m, e).
+    m is a float and e is an integer such that x == m * 2**e exactly.
+    '''
+    exponent: i8 = i8(0)
+    while f32(fabs(x)) > f32(1.0):
+        exponent += i8(1)
+        x /= f32(2.0)
+    return x, exponent
+
+
+@overload
+def isclose(a:f64, b:f64, rel_tol:f64 = 1e-09, abs_tol:f64 = 0.0) -> bool:
+    '''
+    Return True if the values a and b are close to each other and False otherwise.
+    '''
+    difference:f64 = fabs(a-b)
+    greater:f64 = max(fabs(a),fabs(b))
+    return difference <= max(rel_tol*greater, abs_tol)

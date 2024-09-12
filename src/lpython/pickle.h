@@ -1,20 +1,20 @@
 #ifndef LFORTRAN_PICKLE_H
 #define LFORTRAN_PICKLE_H
 
+#include <lpython/python_ast.h>
 #include <libasr/asr.h>
+#include <libasr/location.h>
 
-namespace LFortran {
+namespace LCompilers::LPython {
 
     // Pickle an ASR node
-    std::string pickle(ASR::asr_t &asr, bool colors=false, bool indent=false,
-            bool show_intrinsic_modules=false);
-    std::string pickle(ASR::TranslationUnit_t &asr, bool colors=false,
-            bool indent=false, bool show_intrinsic_modules=false);
+    std::string pickle_python(AST::ast_t &ast, bool colors=false, bool indent=false);
 
     // Print the tree structure
-    std::string pickle_tree(LFortran::ASR::asr_t &asr, bool colors, bool show_intrinsic_modules);
-    std::string pickle_tree(LFortran::ASR::TranslationUnit_t &asr, bool colors, bool show_intrinsic_modules);
+	std::string pickle_tree_python(AST::ast_t &ast, bool colors=true);
 
+    // Print the ASR in json format
+    std::string pickle_json(AST::ast_t &ast, LocationManager &lm);
 }
 
 #endif // LFORTRAN_PICKLE_H

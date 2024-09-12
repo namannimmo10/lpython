@@ -4,12 +4,13 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <iomanip>
+#include <sstream>
 
 #include <libasr/string_utils.h>
 #include <libasr/containers.h>
 
-namespace LFortran
-{
+namespace LCompilers {
 
 
 bool startswith(const std::string &s, const std::string &e)
@@ -36,6 +37,22 @@ char *s2c(Allocator &al, const std::string &s) {
     return x.c_str(al);
 }
 
+// Splits the string `s` using the separator `split_string`
+std::vector<std::string> string_split(const std::string &s, const std::string &split_string)
+{
+    std::vector<std::string> result;
+    size_t old_pos = 0;
+    size_t new_pos;
+    while ((new_pos = s.find(split_string, old_pos)) != std::string::npos) {
+        std::string substr = s.substr(old_pos, new_pos-old_pos);
+        if (substr.size() > 0) result.push_back(substr);
+        old_pos = new_pos+split_string.size();
+    }
+    result.push_back(s.substr(old_pos));
+    return result;
+}
+
+// Splits the string `s` using any space or newline
 std::vector<std::string> split(const std::string &s)
 {
     std::vector<std::string> result;
@@ -99,7 +116,7 @@ std::string read_file(const std::string &filename)
     std::vector<char> bytes(filesize);
     ifs.read(&bytes[0], filesize);
 
-    return std::string(&bytes[0], filesize);
+    return replace(std::string(&bytes[0], filesize), "\r\n", "\n");
 }
 
 std::string parent_path(const std::string &path) {
@@ -130,5 +147,98 @@ std::string join_paths(const std::vector<std::string> &paths) {
     return p;
 }
 
+std::string str_escape_c(const std::string &s) {
+    std::ostringstream o;
+    for (auto c = s.cbegin(); c != s.cend(); c++) {
+        switch (*c) {
+            case '"': o << "\\\""; break;
+            case '\\': o << "\\\\"; break;
+            case '\b': o << "\\b"; break;
+            case '\f': o << "\\f"; break;
+            case '\n': o << "\\n"; break;
+            case '\r': o << "\\r"; break;
+            case '\t': o << "\\t"; break;
+            case '\v': o << "\\v"; break;
+            default:
+                if ('\x00' <= *c && *c <= '\x1f') {
+                    o << "\\u"
+                    << std::hex << std::setw(4) << std::setfill('0') << static_cast<int>(*c);
+                } else {
+                    o << *c;
+                }
+        }
+    }
+    return o.str();
+}
 
-} // namespace LFortran
+char* str_unescape_c(Allocator &al, LCompilers::Str &s) {
+    std::string x = "";
+    size_t idx = 0;
+    for (; idx + 1 < s.size(); idx++) {
+        if (s[idx] == '\\' && s[idx+1] == '\n') { // continuation character
+            idx++;
+        } else if (s[idx] == '\\' && s[idx+1] == 'n') {
+            x += "\n";
+            idx++;
+        } else if (s[idx] == '\\' && s[idx+1] == 't') {
+            x += "\t";
+            idx++;
+        } else if (s[idx] == '\\' && s[idx+1] == 'r') {
+            x += "\r";
+            idx++;
+        } else if (s[idx] == '\\' && s[idx+1] == 'b') {
+            x += "\b";
+            idx++;
+        } else if (s[idx] == '\\' && s[idx+1] == 'v') {
+            x += "\v";
+            idx++;
+        } else if (s[idx] == '\\' && s[idx + 1] == 'f') {
+            x += "\f";
+            idx++;
+        } else if (s[idx] == '\\' && s[idx+1] == '\\') {
+            x += "\\";
+            idx++;
+        } else if (s[idx] == '\\' && s[idx+1] == '"') {
+            x += '"';
+            idx++;
+        } else if (s[idx] == '\\' && s[idx+1] == '\'') {
+            x += '\'';
+            idx++;
+        } else {
+            x += s[idx];
+        }
+    }
+    if (idx < s.size()) {
+        x += s[idx];
+    }
+    return LCompilers::s2c(al, x);
+}
+
+std::string str_escape_fortran_double_quote(const std::string &s) {
+    std::ostringstream o;
+    for (auto c = s.cbegin(); c != s.cend(); c++) {
+        switch (*c) {
+            case '"': o << "\"\""; break;
+        }
+    }
+    return o.str();
+}
+
+char* str_unescape_fortran(Allocator &al, LCompilers::Str &s, char ch) {
+    std::string x = "";
+    size_t idx = 0;
+    for (; idx + 1 < s.size(); idx++) {
+        if (s[idx] == ch && s[idx + 1] == ch) {
+            x += s[idx];
+            idx++;
+        } else {
+            x += s[idx];
+        }
+    }
+    if (idx < s.size()) {
+        x += s[idx];
+    }
+    return LCompilers::s2c(al, x);
+}
+
+} // namespace LCompilers

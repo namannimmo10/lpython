@@ -6,34 +6,12 @@
 #include <string.h>
 #include <lfortran_intrinsics.h>
 
-#define ASSERT(cond)                                                           \
-    {                                                                          \
-        if (!(cond)) {                                                         \
-            printf("%s%s", "ASSERT failed: ", __FILE__);                       \
-            printf("%s%s", "\nfunction ", __func__);                           \
-            printf("%s%d%s", "(), line number ", __LINE__, " at \n");          \
-            printf("%s%s", #cond, "\n");                                       \
-            exit(1);                                                           \
-        }                                                                      \
-    }
-#define ASSERT_MSG(cond, msg)                                                  \
-    {                                                                          \
-        if (!(cond)) {                                                         \
-            printf("%s%s", "ASSERT failed: ", __FILE__);                       \
-            printf("%s%s", "\nfunction ", __func__);                           \
-            printf("%s%d%s", "(), line number ", __LINE__, " at \n");          \
-            printf("%s%s", #cond, "\n");                                       \
-            printf("%s", "ERROR MESSAGE:\n");                                  \
-            printf("%s%s", msg, "\n");                                         \
-            exit(1);                                                           \
-        }                                                                      \
-    }
+inline __attribute__((always_inline)) int32_t add(int32_t x, int32_t y);
+inline __attribute__((always_inline)) int32_t and_op(int32_t x, int32_t y);
+void main0();
+void __main__global_stmts();
 
 
-struct dimension_descriptor
-{
-    int32_t lower_bound, length;
-};
 
 // Implementations
 inline __attribute__((always_inline)) int32_t add(int32_t x, int32_t y)
@@ -63,13 +41,14 @@ void main0()
     ASSERT(z == 16);
 }
 
-void _lpython_main_program()
+void __main__global_stmts()
 {
     main0();
 }
 
 int main(int argc, char* argv[])
 {
-    _lpython_main_program();
+    _lpython_set_argv(argc, argv);
+    __main__global_stmts();
     return 0;
 }

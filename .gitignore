@@ -40,6 +40,7 @@ CPackConfig.cmake
 CPackSourceConfig.cmake
 _CPack_Packages
 /CMakeSettings.json
+src/libasr/libasr.a.*
 
 ## libraries
 *.a
@@ -57,8 +58,10 @@ src/lpython/ast.h
 src/lpython/asr.h
 src/libasr/asr.h
 src/libasr/wasm_visitor.h
+src/libasr/pass/intrinsic_function_registry_util.h
 src/libasr/config.h
 share/jupyter/kernels/fortran/kernel.json
+share/jupyter/kernels/lpython/kernel.json
 src/runtime/*.o.empty.c
 python_ast.py
 python_ast.h
@@ -72,6 +75,10 @@ integration_tests/b5/*
 integration_tests/b6/*
 integration_tests/_lpython-tmp-test-*
 inst/bin/*
+*.clj
+pass_fortran_*.f90
+pass_json_*.json
+pass_tree_*.txt
 *.tmp
 *.tlog
 *.filters
@@ -84,6 +91,15 @@ inst/bin/*
 *.sln
 *.dll
 *.manifest
+*_lines.txt
+*_ldd.txt
+*_lines.dat.txt
+*__tmp__generated__.c
+visualize*.html
+lpython_decorator*/
+a.c
+a.h
+a.py
 
 ### https://raw.github.com/github/gitignore/218a941be92679ce67d0484547e3e142b2f5f6f0/Global/macOS.gitignore
 
@@ -165,6 +181,7 @@ output
 *.smod
 *.js
 *.wasm
+*.data
 /.ccls-cache/
 .cache/
 ext/
@@ -172,6 +189,7 @@ extsrc/
 tmp/
 tmpdebug/
 gentests/
+inst/
 
 ## Ninja
 build.ninja
@@ -217,3 +235,6 @@ integration_tests/array_02_decl
 integration_tests/array_02_decl.c
 integration_tests/expr_12
 integration_tests/expr_12.c
+
+# Interactive Shell
+input

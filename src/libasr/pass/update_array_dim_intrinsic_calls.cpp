@@ -10,7 +10,7 @@
 #include <utility>
 
 
-namespace LFortran {
+namespace LCompilers {
 
 /*
 
@@ -66,7 +66,7 @@ class ReplaceArrayDimIntrinsicCalls: public ASR::BaseExprReplacer<ReplaceArrayDi
         ASR::ttype_t* array_type = ASRUtils::expr_type(x->m_v);
         ASR::dimension_t* dims = nullptr;
         int n = ASRUtils::extract_dimensions_from_ttype(array_type, dims);
-        bool is_argument = v->m_intent == ASRUtils::intent_in || v->m_intent == ASRUtils::intent_out;
+        bool is_argument = v->m_intent == ASRUtils::intent_in || v->m_intent == ASRUtils::intent_out || v->m_intent == ASRUtils::intent_inout;
         if( !(n > 0 && is_argument &&
               !ASRUtils::is_dimension_empty(dims, n)) ) {
             return ;
@@ -81,8 +81,11 @@ class ReplaceArrayDimIntrinsicCalls: public ASR::BaseExprReplacer<ReplaceArrayDi
         ASR::expr_t* array_size = ASRUtils::EXPR(ASR::make_IntegerConstant_t(
                                     al, x->base.base.loc, 1, x->m_type));
         for( int i = 0; i < n; i++ ) {
+            ASR::expr_t* dim_length = ASRUtils::EXPR(ASR::make_Cast_t(
+                al, x->base.base.loc, dims[i].m_length, ASR::cast_kindType::IntegerToInteger, x->m_type, nullptr));
+
             array_size = ASRUtils::EXPR(ASR::make_IntegerBinOp_t(al, x->base.base.loc,
-                            array_size, ASR::binopType::Mul, dims[i].m_length, x->m_type,
+                            array_size, ASR::binopType::Mul, dim_length, x->m_type,
                             nullptr));
         }
         *current_expr = array_size;
@@ -147,6 +150,8 @@ void pass_update_array_dim_intrinsic_calls(Allocator &al, ASR::TranslationUnit_t
                                            const LCompilers::PassOptions& /*pass_options*/) {
     ArrayDimIntrinsicCallsVisitor v(al);
     v.visit_TranslationUnit(unit);
+    PassUtils::UpdateDependenciesVisitor u(al);
+    u.visit_TranslationUnit(unit);
 }
 
-} // namespace LFortran
+} // namespace LCompilers

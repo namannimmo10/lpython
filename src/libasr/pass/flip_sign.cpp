@@ -3,14 +3,15 @@
 #include <libasr/exception.h>
 #include <libasr/asr_utils.h>
 #include <libasr/asr_verify.h>
-#include <libasr/pass/flip_sign.h>
+#include <libasr/pass/replace_flip_sign.h>
 #include <libasr/pass/pass_utils.h>
+#include <libasr/pass/intrinsic_function_registry.h>
 
 #include <vector>
 #include <utility>
 
 
-namespace LFortran {
+namespace LCompilers {
 
 using ASR::down_cast;
 using ASR::is_a;
@@ -97,12 +98,12 @@ public:
         set_flip_sign();
         if( is_flip_sign_present ) {
             // xi = xor(shiftl(int(Nd),63), xi)
-            LFORTRAN_ASSERT(flip_sign_signal_variable);
-            LFORTRAN_ASSERT(flip_sign_variable);
-            ASR::stmt_t* flip_sign_call = PassUtils::get_flipsign(flip_sign_signal_variable,
-                                            flip_sign_variable, al, unit, pass_options, current_scope,
-                                            [&](const std::string &msg, const Location &) { throw LCompilersException(msg); });
-            pass_result.push_back(al, flip_sign_call);
+            LCOMPILERS_ASSERT(flip_sign_signal_variable);
+            LCOMPILERS_ASSERT(flip_sign_variable);
+            ASR::expr_t* flip_sign_result = PassUtils::get_flipsign(flip_sign_signal_variable,
+                                            flip_sign_variable, al, unit, x.base.base.loc, pass_options);
+            pass_result.push_back(al, ASRUtils::STMT(ASR::make_Assignment_t(al, x.base.base.loc,
+                    flip_sign_variable, flip_sign_result, nullptr)));
         }
     }
 
@@ -212,7 +213,9 @@ void pass_replace_flip_sign(Allocator &al, ASR::TranslationUnit_t &unit,
                             const LCompilers::PassOptions& pass_options) {
     FlipSignVisitor v(al, unit, pass_options);
     v.visit_TranslationUnit(unit);
+    PassUtils::UpdateDependenciesVisitor u(al);
+    u.visit_TranslationUnit(unit);
 }
 
 
-} // namespace LFortran
+} // namespace LCompilers
